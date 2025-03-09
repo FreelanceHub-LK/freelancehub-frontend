@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,7 +23,7 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +56,6 @@ export default function RegisterPage() {
     setRegisterError("");
 
     try {
-      // You would implement your own registration API call here
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -75,14 +75,12 @@ export default function RegisterPage() {
         throw new Error(result.message || "Registration failed");
       }
 
-      // Auto sign in after successful registration
       await signIn("credentials", {
         redirect: false,
         email: data.email,
         password: data.password,
       });
 
-      // Redirect to the appropriate dashboard
       router.push(data.accountType === "client" ? "/dashboard/client" : "/dashboard/freelancer");
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : "Registration failed. Please try again.");
@@ -133,7 +131,6 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => {
-                  // This would be handled by the form state setter in a real implementation
                   document.getElementById("client")?.setAttribute("checked", "true");
                   document.getElementById("freelancer")?.removeAttribute("checked");
                 }}
@@ -330,7 +327,6 @@ export default function RegisterPage() {
                 onClick={handleGoogleSignUp}
                 className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-              
                 Sign up with Google
               </button>
             </div>
@@ -349,5 +345,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }
