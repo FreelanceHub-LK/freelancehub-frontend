@@ -22,7 +22,7 @@ const CTA = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Join thousands of businesses and freelancers already connecting on Sri Lanka's premier freelancing platform
+            Join thousands of businesses and freelancers already connecting on Sri Lanka&apos;s premier freelancing platform
           </motion.p>
           
           <motion.div 
