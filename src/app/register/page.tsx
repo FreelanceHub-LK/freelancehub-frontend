@@ -144,7 +144,7 @@ export default function RegisterPage() {
                 }`}
               >
                 <Briefcase className={`h-6 w-6 ${accountType === "client" ? "text-green-500" : "text-gray-400"}`} />
-                <span className="mt-1 text-sm font-medium">I'm a Client</span>
+                <span className="mt-1 text-sm font-medium">I&apos;m a Client</span>
               </button>
               
               <button
@@ -161,7 +161,7 @@ export default function RegisterPage() {
                 }`}
               >
                 <Code className={`h-6 w-6 ${accountType === "freelancer" ? "text-green-500" : "text-gray-400"}`} />
-                <span className="mt-1 text-sm font-medium">I'm a Freelancer</span>
+                <span className="mt-1 text-sm font-medium">I&apos;m a Freelancer</span>
               </button>
             </div>
             
