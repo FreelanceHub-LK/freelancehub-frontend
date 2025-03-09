@@ -16,7 +16,7 @@ const Footer = () => {
             <div className="flex items-center">
               <div className="relative h-10 w-10 mr-3">
                 <Image
-                  src="/api/placeholder/40/40"
+                  src="/logo.png"
                   alt="Logo"
                   fill
                   className="object-contain"
