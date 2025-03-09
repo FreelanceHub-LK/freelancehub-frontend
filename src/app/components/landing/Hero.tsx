@@ -88,7 +88,6 @@ export default function Hero() {
                 src="/landing-img.png"
                 alt="Sri Lankan freelancers working"
                 fill
-                className="object-cover rounded-2xl shadow-xl"
                 priority
               />
             </div>

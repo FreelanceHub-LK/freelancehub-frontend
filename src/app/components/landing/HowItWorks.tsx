@@ -8,31 +8,31 @@ const steps = [
     number: '01',
     title: 'Post Your Project',
     description: 'Describe your project needs, set your budget, and specify requirements',
-    image: '/api/placeholder/300/200'
+    image: '/post-job.jpg'
   },
   {
     number: '02',
     title: 'Get Proposals',
     description: 'Receive detailed proposals from qualified Sri Lankan freelancers',
-    image: '/api/placeholder/300/200'
+    image: '/get-proposal.jpg'
   },
   {
     number: '03',
     title: 'Hire the Best Talent',
     description: 'Review profiles, portfolios and select the perfect match for your project',
-    image: '/api/placeholder/300/200'
+    image: '/hire-talent.jpg'
   },
   {
     number: '04',
     title: 'Work Together',
     description: 'Collaborate efficiently with messaging, file sharing, and milestone tracking',
-    image: '/api/placeholder/300/200'
+    image: '/work-together.jpg'
   },
   {
     number: '05',
     title: 'Pay Securely',
     description: 'Release payments through our secure system when work meets your satisfaction',
-    image: '/api/placeholder/300/200'
+    image: '/pay-secure.jpg'
   }
 ];
 
