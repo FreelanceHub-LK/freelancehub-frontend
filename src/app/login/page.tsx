@@ -55,6 +55,7 @@ export default function LoginPage() {
     } catch (error) {
       setAuthError("An error occurred. Please try again.");
       setIsLoading(false);
+      throw error as Error;
     }
   };
 
