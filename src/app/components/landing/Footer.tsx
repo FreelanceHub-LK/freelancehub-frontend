@@ -25,7 +25,7 @@ const Footer = () => {
               <h2 className="text-xl font-bold text-white">FreelanceHub</h2>
             </div>
             <p className="text-gray-400">
-              Sri Lanka's premier platform connecting local businesses with skilled freelance professionals.
+              Sri Lanka&apos;s premier platform connecting local businesses with skilled freelance professionals.
             </p>
             <div className="flex space-x-4 pt-2">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">

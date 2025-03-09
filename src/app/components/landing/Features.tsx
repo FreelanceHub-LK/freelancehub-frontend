@@ -46,7 +46,7 @@ const Features = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose Our Platform</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            We've built the most reliable platform for connecting Sri Lankan businesses with top local freelance talent.
+            We&apos;ve built the most reliable platform for connecting Sri Lankan businesses with top local freelance talent.
           </p>
         </div>
         

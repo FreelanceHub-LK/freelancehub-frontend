@@ -17,7 +17,7 @@ export default function Hero() {
               transition={{ duration: 0.5 }}
             >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Connect with Sri Lanka's Top{' '}
+                Connect with Sri Lanka&apos;s Top{' '}
                 <span className="text-green-600 block">
                   <Typewriter
                     words={[
@@ -44,7 +44,7 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              Sri Lanka's first dedicated platform connecting businesses with skilled local freelancers. Find the perfect talent for your project in minutes.
+              Sri Lanka&apos;s first dedicated platform connecting businesses with skilled local freelancers. Find the perfect talent for your project in minutes.
             </motion.p>
 
             <motion.div
