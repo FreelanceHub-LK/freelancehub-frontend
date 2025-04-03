@@ -1,4 +1,4 @@
-"use client";
+// src/app/freelancers/[id]/page.tsx
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -62,17 +62,18 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
+// Remove the "use client" directive
 export default function FreelancerDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const freelancer = mockFreelancer.id === params.id ? mockFreelancer : null;
-
+  
   if (!freelancer) {
     notFound();
   }
-
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -82,17 +83,14 @@ export default function FreelancerDetailPage({
           </Button>
         </Link>
       </div>
-
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <FreelancerProfile freelancer={freelancer} />
-
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <Button icon={<Mail size={16} />} className="w-full sm:w-auto">
             Contact Freelancer
           </Button>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <FreelancerPortfolio portfolio={freelancer.portfolio} />
