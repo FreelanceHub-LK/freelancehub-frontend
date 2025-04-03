@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { User, Calendar, Clock, Star } from "lucide-react";
 import Button from "@/components/ui/Button";

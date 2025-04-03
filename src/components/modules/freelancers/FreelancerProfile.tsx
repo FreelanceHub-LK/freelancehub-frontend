@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import Badge from "@/components/ui/Badge";
 import { Star, MapPin, Calendar, CheckCircle } from "lucide-react";
