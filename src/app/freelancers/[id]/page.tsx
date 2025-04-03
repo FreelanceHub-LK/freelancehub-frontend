@@ -1,4 +1,3 @@
-// src/app/freelancers/[id]/page.tsx
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -62,18 +61,14 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
-// Use the correct Next.js App Router type for params
-interface PageProps {
-  params: {
-    id: string;
-  };
-  searchParams?: Record<string, string | string[] | undefined>;
-}
+export default function FreelancerDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const project = mockFreelancer.id === params.id ? mockFreelancer : null;
 
-export default function FreelancerDetailPage({ params }: PageProps) {
-  const freelancer = mockFreelancer.id === params.id ? mockFreelancer : null;
-  
-  if (!freelancer) {
+  if (!project) {
     notFound();
   }
   
@@ -87,7 +82,7 @@ export default function FreelancerDetailPage({ params }: PageProps) {
         </Link>
       </div>
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-        <FreelancerProfile freelancer={freelancer} />
+        <FreelancerProfile freelancer={project} />
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <Button icon={<Mail size={16} />} className="w-full sm:w-auto">
             Contact Freelancer
@@ -96,10 +91,10 @@ export default function FreelancerDetailPage({ params }: PageProps) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <FreelancerPortfolio portfolio={freelancer.portfolio} />
+          <FreelancerPortfolio portfolio={project.portfolio} />
         </div>
         <div>
-          <FreelancerReviews freelancerId={freelancer.id} />
+          <FreelancerReviews freelancerId={project.id} />
         </div>
       </div>
     </div>

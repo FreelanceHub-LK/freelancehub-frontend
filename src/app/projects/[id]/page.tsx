@@ -46,7 +46,6 @@ export default function ProjectDetailPage({
 }: {
   params: { id: string };
 }) {
-  // In a real app, fetch project by ID
   const project = mockProject.id === params.id ? mockProject : null;
 
   if (!project) {
