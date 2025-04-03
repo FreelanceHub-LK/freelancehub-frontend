@@ -61,17 +61,21 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
-export default function FreelancerDetailPage({ params }: { params: { id: string } }) {
-  if (!params || !params.id) {
+export default async function FreelancerDetailPage({ params }: { params: { id: string } }) {
+  if (!params) {
     notFound();
   }
 
-  const project = mockFreelancer.id === params.id ? mockFreelancer : null;
-
-  if (!project) {
+  const { id } = await params; 
+  if (!id) {
     notFound();
   }
-  
+
+  const freelancer = mockFreelancer.id === id ? mockFreelancer : null;
+  if (!freelancer) {
+    notFound();
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -82,7 +86,7 @@ export default function FreelancerDetailPage({ params }: { params: { id: string 
         </Link>
       </div>
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-        <FreelancerProfile freelancer={project} />
+        <FreelancerProfile freelancer={freelancer} />
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <Button icon={<Mail size={16} />} className="w-full sm:w-auto">
             Contact Freelancer
@@ -91,10 +95,10 @@ export default function FreelancerDetailPage({ params }: { params: { id: string 
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <FreelancerPortfolio portfolio={project.portfolio} />
+          <FreelancerPortfolio portfolio={freelancer.portfolio} />
         </div>
         <div>
-          <FreelancerReviews freelancerId={project.id} />
+          <FreelancerReviews freelancerId={freelancer.id} />
         </div>
       </div>
     </div>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProjectDetails } from "@/components/modules/projects/ProjectDetails";
 
-// Mock data - in real app, this would come from API
 const mockProject: {
   id: string;
   title: string;
