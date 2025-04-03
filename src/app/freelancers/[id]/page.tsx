@@ -1,3 +1,4 @@
+// src/app/freelancers/[id]/page.tsx
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -61,12 +62,15 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
-// Remove the "use client" directive
-export default function FreelancerDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+// Use the correct Next.js App Router type for params
+interface PageProps {
+  params: {
+    id: string;
+  };
+  searchParams?: Record<string, string | string[] | undefined>;
+}
+
+export default function FreelancerDetailPage({ params }: PageProps) {
   const freelancer = mockFreelancer.id === params.id ? mockFreelancer : null;
   
   if (!freelancer) {
