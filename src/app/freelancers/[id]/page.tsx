@@ -61,11 +61,11 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
-export default function FreelancerDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function FreelancerDetailPage({ params }: { params: { id: string } }) {
+  if (!params || !params.id) {
+    notFound();
+  }
+
   const project = mockFreelancer.id === params.id ? mockFreelancer : null;
 
   if (!project) {
