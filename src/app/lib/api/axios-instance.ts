@@ -1,7 +1,6 @@
 import { toast } from "@/context/toast-context";
 import axios from "axios";
 
-// Create axios instance
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api",
   timeout: 10000, // 10 seconds
@@ -10,11 +9,11 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor for adding authentication token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
     if (token) {
+      config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
@@ -24,20 +23,17 @@ apiClient.interceptors.request.use(
   },
 );
 
-// Response interceptor for error handling and token refresh
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle specific error scenarios
     if (error.response) {
       switch (error.response.status) {
         case 400:
           toast.error("Bad Request: Invalid data submitted");
           break;
         case 401:
-          // Unauthorized - handle token refresh or redirect to login
           if (!originalRequest._retry) {
             originalRequest._retry = true;
             try {
@@ -46,17 +42,12 @@ apiClient.interceptors.response.use(
                 refreshToken,
               });
 
-              // Update tokens
-              localStorage.setItem("access_token", response.data.accessToken);
-              localStorage.setItem("refresh_token", response.data.refreshToken);
-
-              // Retry the original request
+              const data = response.data as { accessToken: string; refreshToken: string };
+              localStorage.setItem("access_token", data.accessToken);
+              localStorage.setItem("refresh_token", data.refreshToken);
               return apiClient(originalRequest);
             } catch (refreshError) {
-              // Logout user if refresh fails
               toast.error("Session expired. Please login again.");
-              // Implement logout logic here
-              // window.location.href = '/login';
               return Promise.reject(refreshError);
             }
           }
@@ -74,12 +65,10 @@ apiClient.interceptors.response.use(
           toast.error("An unexpected error occurred");
       }
     } else if (error.request) {
-      // Network error or request never left
       toast.error(
         "No response received from server. Check your network connection.",
       );
     } else {
-      // Something happened in setting up the request
       toast.error("Error setting up the request");
     }
 
@@ -87,7 +76,6 @@ apiClient.interceptors.response.use(
   },
 );
 
-// API service methods
 export const apiService = {
   get: (url: string, config = {}) => apiClient.get(url, config),
   post: (url: string, data = {}, config = {}) =>
