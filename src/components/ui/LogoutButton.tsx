@@ -7,7 +7,10 @@ interface LogoutButtonProps {
   className?: string;
 }
 
-function LogoutButton({ callbackUrl = "/login", className = "" }: LogoutButtonProps) {
+function LogoutButton({
+  callbackUrl = "/login",
+  className = "",
+}: LogoutButtonProps) {
   return (
     <button
       onClick={() => signOut({ callbackUrl })}

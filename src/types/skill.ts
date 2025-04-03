@@ -1,6 +1,5 @@
 export interface Skill {
-    name: string;
-    endorsements: number;
-    proficiency: number;
-  }
-  
+  name: string;
+  endorsements: number;
+  proficiency: number;
+}

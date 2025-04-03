@@ -1,8 +1,8 @@
-'use client';
-import Link from 'next/link';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { Typewriter } from 'react-simple-typewriter'; 
+"use client";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { Typewriter } from "react-simple-typewriter";
 
 export default function Hero() {
   return (
@@ -17,15 +17,15 @@ export default function Hero() {
               transition={{ duration: 0.5 }}
             >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Connect with Sri Lanka&apos;s Top{' '}
+                Connect with Sri Lanka&apos;s Top{" "}
                 <span className="text-green-600 block">
                   <Typewriter
                     words={[
-                      'Developers',
-                      'Designers',
-                      'Writers',
-                      'Marketers',
-                      'Freelancers',
+                      "Developers",
+                      "Designers",
+                      "Writers",
+                      "Marketers",
+                      "Freelancers",
                     ]}
                     loop={true}
                     cursor
@@ -44,7 +44,9 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              Sri Lanka&apos;s first dedicated platform connecting businesses with skilled local freelancers. Find the perfect talent for your project in minutes.
+              Sri Lanka&apos;s first dedicated platform connecting businesses
+              with skilled local freelancers. Find the perfect talent for your
+              project in minutes.
             </motion.p>
 
             <motion.div
