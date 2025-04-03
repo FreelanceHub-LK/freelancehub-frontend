@@ -1,22 +1,31 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState } from "react";
 // Fixed import to match your actual component export
-import Button from '@/components/ui/Button'; // This is correct based on your export
-import { Search, Filter, X } from 'lucide-react';
+import Button from "@/components/ui/Button"; // This is correct based on your export
+import { Search, Filter, X } from "lucide-react";
 
 interface ProjectFiltersProps {
   onApplyFilters: (filters: any) => void;
 }
 
-export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }) => {
-  const [keyword, setKeyword] = useState('');
-  const [minBudget, setMinBudget] = useState('');
-  const [maxBudget, setMaxBudget] = useState('');
+export const ProjectFilters: React.FC<ProjectFiltersProps> = ({
+  onApplyFilters,
+}) => {
+  const [keyword, setKeyword] = useState("");
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  
-  const categories = ['Web Development', 'Mobile App', 'Design', 'Content Writing', 'Marketing', 'Data Entry'];
-  
+
+  const categories = [
+    "Web Development",
+    "Mobile App",
+    "Design",
+    "Content Writing",
+    "Marketing",
+    "Data Entry",
+  ];
+
   const handleApplyFilters = () => {
     onApplyFilters({
       keyword,
@@ -24,26 +33,29 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
         min: minBudget ? parseInt(minBudget) : undefined,
         max: maxBudget ? parseInt(maxBudget) : undefined,
       },
-      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+      categories:
+        selectedCategories.length > 0 ? selectedCategories : undefined,
     });
   };
-  
+
   const handleClearFilters = () => {
-    setKeyword('');
-    setMinBudget('');
-    setMaxBudget('');
+    setKeyword("");
+    setMinBudget("");
+    setMaxBudget("");
     setSelectedCategories([]);
     onApplyFilters({});
   };
-  
+
   const toggleCategory = (category: string) => {
     if (selectedCategories.includes(category)) {
-      setSelectedCategories(selectedCategories.filter(cat => cat !== category));
+      setSelectedCategories(
+        selectedCategories.filter((cat) => cat !== category),
+      );
     } else {
       setSelectedCategories([...selectedCategories, category]);
     }
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
       <div className="flex items-center mb-4">
@@ -57,8 +69,8 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
           />
           <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="ml-2"
           icon={<Filter size={16} />} // Your Button component supports the icon prop
           onClick={() => setShowFilters(!showFilters)}
@@ -69,12 +81,12 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
           Search
         </Button>
       </div>
-      
+
       {showFilters && (
         <div className="mt-4 border-t pt-4">
           <div className="flex justify-between mb-2">
             <h3 className="font-medium">Filters</h3>
-            <button 
+            <button
               className="text-sm text-gray-500 flex items-center"
               onClick={handleClearFilters}
             >
@@ -82,10 +94,12 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
               Clear all
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range (LKR)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Budget Range (LKR)
+              </label>
               <div className="flex items-center">
                 <input
                   type="number"
@@ -104,9 +118,11 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
                 />
               </div>
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Categories
+              </label>
               <div className="flex flex-wrap gap-2">
                 {categories.map((category) => (
                   <button
@@ -114,8 +130,8 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({ onApplyFilters }
                     onClick={() => toggleCategory(category)}
                     className={`px-3 py-1 rounded-full text-sm ${
                       selectedCategories.includes(category)
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700'
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-100 text-gray-700"
                     }`}
                   >
                     {category}

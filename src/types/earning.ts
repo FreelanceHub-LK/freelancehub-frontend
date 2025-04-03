@@ -1,4 +1,4 @@
 export interface Earning {
-    month: string;
-    amount: number;
-  }
+  month: string;
+  amount: number;
+}

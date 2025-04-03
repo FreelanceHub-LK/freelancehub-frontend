@@ -2,22 +2,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { 
-  Phone, 
-  MapPin, 
-  FileText, 
-  Tag, 
-  Upload, 
-  Plus, 
+import {
+  Phone,
+  MapPin,
+  FileText,
+  Tag,
+  Upload,
+  Plus,
   X,
-  Check
+  Check,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const profileSchema = z.object({
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 characters"),
+  phoneNumber: z
+    .string()
+    .min(10, "Phone number must be at least 10 characters"),
   location: z.string().min(2, "Location must be at least 2 characters"),
   bio: z.string().min(20, "Bio must be at least 20 characters"),
   skills: z.array(z.string()).min(1, "Please select at least one skill"),
@@ -27,19 +29,42 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 // Skills list for selection
 const AVAILABLE_SKILLS = [
-  "JavaScript", "TypeScript", "React", "Next.js", "Node.js", 
-  "Python", "Java", "PHP", "HTML/CSS", "UI/UX Design",
-  "Angular", "Vue.js", "MongoDB", "MySQL", "PostgreSQL",
-  "AWS", "Azure", "DevOps", "SEO", "Content Writing",
-  "Graphic Design", "WordPress", "Laravel", "Mobile Development",
-  "Data Analysis", "Machine Learning", "Digital Marketing"
+  "JavaScript",
+  "TypeScript",
+  "React",
+  "Next.js",
+  "Node.js",
+  "Python",
+  "Java",
+  "PHP",
+  "HTML/CSS",
+  "UI/UX Design",
+  "Angular",
+  "Vue.js",
+  "MongoDB",
+  "MySQL",
+  "PostgreSQL",
+  "AWS",
+  "Azure",
+  "DevOps",
+  "SEO",
+  "Content Writing",
+  "Graphic Design",
+  "WordPress",
+  "Laravel",
+  "Mobile Development",
+  "Data Analysis",
+  "Machine Learning",
+  "Digital Marketing",
 ];
 
 export default function FreelancerProfileSetup() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(
+    null,
+  );
   const [skillInput, setSkillInput] = useState("");
   const [filteredSkills, setFilteredSkills] = useState<string[]>([]);
   const [showSkillsDropdown, setShowSkillsDropdown] = useState(false);
@@ -63,7 +88,9 @@ export default function FreelancerProfileSetup() {
 
   const skills = watch("skills");
 
-  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setProfilePicture(file);
@@ -76,9 +103,11 @@ export default function FreelancerProfileSetup() {
       setFilteredSkills([]);
       return;
     }
-    
+
     const filtered = AVAILABLE_SKILLS.filter(
-      skill => skill.toLowerCase().includes(input.toLowerCase()) && !skills.includes(skill)
+      (skill) =>
+        skill.toLowerCase().includes(input.toLowerCase()) &&
+        !skills.includes(skill),
     );
     setFilteredSkills(filtered);
   };
@@ -110,7 +139,7 @@ export default function FreelancerProfileSetup() {
   const removeSkill = (skill: string) => {
     setValue(
       "skills",
-      skills.filter((s) => s !== skill)
+      skills.filter((s) => s !== skill),
     );
   };
 
@@ -126,7 +155,7 @@ export default function FreelancerProfileSetup() {
     data.skills.forEach((skill, index) => {
       formData.append(`skills[${index}]`, skill);
     });
-    
+
     if (profilePicture) {
       formData.append("profilePicture", profilePicture);
     }
@@ -146,7 +175,11 @@ export default function FreelancerProfileSetup() {
       // Redirect to freelancer dashboard
       router.push("/dashboard/freelancer");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
       setIsLoading(false);
     }
   };
@@ -156,7 +189,6 @@ export default function FreelancerProfileSetup() {
       {/* Left side - Form */}
       <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-12 overflow-y-auto">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Complete your freelancer profile
           </h2>
@@ -194,7 +226,10 @@ export default function FreelancerProfileSetup() {
                       </div>
                     )}
                   </div>
-                  <label htmlFor="profile-upload" className="cursor-pointer py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                  <label
+                    htmlFor="profile-upload"
+                    className="cursor-pointer py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
                     Upload photo
                   </label>
                   <input
@@ -205,13 +240,18 @@ export default function FreelancerProfileSetup() {
                     onChange={handleProfilePictureChange}
                     className="sr-only"
                   />
-                  <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    PNG, JPG, GIF up to 2MB
+                  </p>
                 </div>
               </div>
 
               {/* Phone Number */}
               <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="phoneNumber"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Phone Number
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -229,13 +269,18 @@ export default function FreelancerProfileSetup() {
                   />
                 </div>
                 {errors.phoneNumber && (
-                  <p className="mt-1 text-sm text-red-600">{errors.phoneNumber.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.phoneNumber.message}
+                  </p>
                 )}
               </div>
 
               {/* Location */}
               <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="location"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Location
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -253,13 +298,18 @@ export default function FreelancerProfileSetup() {
                   />
                 </div>
                 {errors.location && (
-                  <p className="mt-1 text-sm text-red-600">{errors.location.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.location.message}
+                  </p>
                 )}
               </div>
 
               {/* Bio */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="bio"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Bio
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -277,13 +327,18 @@ export default function FreelancerProfileSetup() {
                   />
                 </div>
                 {errors.bio && (
-                  <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.bio.message}
+                  </p>
                 )}
               </div>
 
               {/* Skills */}
               <div>
-                <label htmlFor="skills" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="skills"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Skills
                 </label>
                 <div className="mt-1 relative">
@@ -354,7 +409,9 @@ export default function FreelancerProfileSetup() {
                     )}
                   </div>
                   {errors.skills && (
-                    <p className="mt-1 text-sm text-red-600">{errors.skills.message}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.skills.message}
+                    </p>
                   )}
                   <p className="mt-1 text-xs text-gray-500">
                     Type to search or add your own custom skills
@@ -372,14 +429,15 @@ export default function FreelancerProfileSetup() {
                 </button>
               </div>
             </form>
-  
+
             <div className="mt-6 text-center text-xs text-gray-500">
-              You can always update your profile information later from your account settings.
+              You can always update your profile information later from your
+              account settings.
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Right side - Image */}
       <div className="hidden lg:block lg:w-1/2 relative">
         <Image
@@ -390,8 +448,12 @@ export default function FreelancerProfileSetup() {
           priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-12">
-          <h2 className="text-white text-3xl font-bold mb-4">Start your freelance journey today</h2>
-          <p className="text-white text-lg mb-6">Connect with clients worldwide and showcase your professional skills</p>
+          <h2 className="text-white text-3xl font-bold mb-4">
+            Start your freelance journey today
+          </h2>
+          <p className="text-white text-lg mb-6">
+            Connect with clients worldwide and showcase your professional skills
+          </p>
           <div className="flex space-x-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex-1">
               <p className="text-white font-bold text-2xl">5000+</p>

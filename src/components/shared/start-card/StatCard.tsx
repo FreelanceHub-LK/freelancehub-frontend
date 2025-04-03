@@ -1,12 +1,12 @@
-import React from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import React from "react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StatCardProps {
   title: string;
   value: number | string;
   change?: number;
   icon?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'success' | 'danger';
+  variant?: "primary" | "secondary" | "success" | "danger";
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -14,14 +14,18 @@ const StatCard: React.FC<StatCardProps> = ({
   value,
   change,
   icon,
-  variant = 'primary'
+  variant = "primary",
 }) => {
   const getVariantClasses = () => {
     switch (variant) {
-      case 'primary': return 'bg-blue-100 text-blue-800';
-      case 'secondary': return 'bg-gray-100 text-gray-800';
-      case 'success': return 'bg-green-100 text-green-800';
-      case 'danger': return 'bg-red-100 text-red-800';
+      case "primary":
+        return "bg-blue-100 text-blue-800";
+      case "secondary":
+        return "bg-gray-100 text-gray-800";
+      case "success":
+        return "bg-green-100 text-green-800";
+      case "danger":
+        return "bg-red-100 text-red-800";
     }
   };
 
@@ -41,8 +45,10 @@ const StatCard: React.FC<StatCardProps> = ({
           ) : (
             <TrendingDown className="text-red-500 mr-2" size={16} />
           )}
-          <span className={`text-sm ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {Math.abs(change)}% {change >= 0 ? 'increase' : 'decrease'}
+          <span
+            className={`text-sm ${change >= 0 ? "text-green-600" : "text-red-600"}`}
+          >
+            {Math.abs(change)}% {change >= 0 ? "increase" : "decrease"}
           </span>
         </div>
       )}

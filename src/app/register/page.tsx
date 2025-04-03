@@ -9,16 +9,18 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
-  accountType: z.enum(["client", "freelancer"]),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+    accountType: z.enum(["client", "freelancer"]),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -30,7 +32,8 @@ function RegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerError, setRegisterError] = useState("");
 
-  const defaultAccountType = searchParams.get("type") === "freelancer" ? "freelancer" : "client";
+  const defaultAccountType =
+    searchParams.get("type") === "freelancer" ? "freelancer" : "client";
 
   const {
     register,
@@ -80,16 +83,27 @@ function RegisterForm() {
         password: data.password,
       });
 
-      router.push(data.accountType === "client" ? "/dashboard/client" : "/dashboard/freelancer");
+      router.push(
+        data.accountType === "client"
+          ? "/dashboard/client"
+          : "/dashboard/freelancer",
+      );
     } catch (error) {
-      setRegisterError(error instanceof Error ? error.message : "Registration failed. Please try again.");
+      setRegisterError(
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again.",
+      );
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignUp = () => {
-    signIn("google", { 
-      callbackUrl: accountType === "client" ? "/dashboard/client" : "/dashboard/freelancer" 
+    signIn("google", {
+      callbackUrl:
+        accountType === "client"
+          ? "/dashboard/client"
+          : "/dashboard/freelancer",
     });
   };
 
@@ -98,12 +112,7 @@ function RegisterForm() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <div className="relative w-12 h-12">
-            <Image 
-              src="/logo.png" 
-              alt="Logo" 
-              fill 
-              className="rounded-full"
-            />
+            <Image src="/logo.png" alt="Logo" fill className="rounded-full" />
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -111,7 +120,10 @@ function RegisterForm() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Or{" "}
-          <Link href="/login" className="font-medium text-green-600 hover:text-green-500">
+          <Link
+            href="/login"
+            className="font-medium text-green-600 hover:text-green-500"
+          >
             sign in to your existing account
           </Link>
         </p>
@@ -130,8 +142,12 @@ function RegisterForm() {
               <button
                 type="button"
                 onClick={() => {
-                  document.getElementById("client")?.setAttribute("checked", "true");
-                  document.getElementById("freelancer")?.removeAttribute("checked");
+                  document
+                    .getElementById("client")
+                    ?.setAttribute("checked", "true");
+                  document
+                    .getElementById("freelancer")
+                    ?.removeAttribute("checked");
                 }}
                 className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
                   accountType === "client"
@@ -139,15 +155,21 @@ function RegisterForm() {
                     : "border-gray-300 text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                <Briefcase className={`h-6 w-6 ${accountType === "client" ? "text-green-500" : "text-gray-400"}`} />
-                <span className="mt-1 text-sm font-medium">I&apos;m a Client</span>
+                <Briefcase
+                  className={`h-6 w-6 ${accountType === "client" ? "text-green-500" : "text-gray-400"}`}
+                />
+                <span className="mt-1 text-sm font-medium">
+                  I&apos;m a Client
+                </span>
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => {
                   // This would be handled by the form state setter in a real implementation
-                  document.getElementById("freelancer")?.setAttribute("checked", "true");
+                  document
+                    .getElementById("freelancer")
+                    ?.setAttribute("checked", "true");
                   document.getElementById("client")?.removeAttribute("checked");
                 }}
                 className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
@@ -156,11 +178,15 @@ function RegisterForm() {
                     : "border-gray-300 text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                <Code className={`h-6 w-6 ${accountType === "freelancer" ? "text-green-500" : "text-gray-400"}`} />
-                <span className="mt-1 text-sm font-medium">I&apos;m a Freelancer</span>
+                <Code
+                  className={`h-6 w-6 ${accountType === "freelancer" ? "text-green-500" : "text-gray-400"}`}
+                />
+                <span className="mt-1 text-sm font-medium">
+                  I&apos;m a Freelancer
+                </span>
               </button>
             </div>
-            
+
             <div className="hidden">
               <input
                 id="client"
@@ -178,10 +204,13 @@ function RegisterForm() {
               />
             </div>
           </div>
-          
+
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Full name
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -200,12 +229,17 @@ function RegisterForm() {
                 />
               </div>
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Email address
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -224,12 +258,17 @@ function RegisterForm() {
                 />
               </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -260,12 +299,17 @@ function RegisterForm() {
                 </div>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Confirm password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -277,7 +321,9 @@ function RegisterForm() {
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   className={`block w-full pl-10 pr-10 py-2 border ${
-                    errors.confirmPassword ? "border-red-300" : "border-gray-300"
+                    errors.confirmPassword
+                      ? "border-red-300"
+                      : "border-gray-300"
                   } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
                   {...register("confirmPassword")}
                 />
@@ -296,7 +342,9 @@ function RegisterForm() {
                 </div>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.confirmPassword.message}
+                </p>
               )}
             </div>
 
@@ -317,7 +365,9 @@ function RegisterForm() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white text-gray-500">
+                  Or continue with
+                </span>
               </div>
             </div>
 
@@ -337,7 +387,10 @@ function RegisterForm() {
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-green-600 hover:text-green-500">
+            <Link
+              href="/privacy"
+              className="text-green-600 hover:text-green-500"
+            >
               Privacy Policy
             </Link>
           </div>
@@ -349,7 +402,13 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center min-h-screen">
+          Loading...
+        </div>
+      }
+    >
       <RegisterForm />
     </Suspense>
   );
