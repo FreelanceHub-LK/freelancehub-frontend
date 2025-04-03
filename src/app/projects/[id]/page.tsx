@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { notFound } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProjectDetails } from "@/components/modules/projects/ProjectDetails";
@@ -40,12 +40,15 @@ const mockProject: {
   },
 };
 
-export default function ProjectDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const project = mockProject.id === params.id ? mockProject : null;
+export default function ProjectDetailPage() {
+  const params = useParams();
+
+  if (!params?.id) {
+    notFound();
+  }
+
+  const id = String(params.id);
+  const project = mockProject.id === id ? mockProject : null;
 
   if (!project) {
     notFound();

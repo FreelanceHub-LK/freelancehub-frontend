@@ -1,6 +1,7 @@
+"use client";
 import React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { ArrowLeft, Mail } from "lucide-react";
 import { FreelancerProfile } from "@/components/modules/freelancers/FreelancerProfile";
@@ -61,17 +62,20 @@ const mockFreelancer = {
   languages: ["English (Fluent)", "Sinhala (Native)"],
 };
 
-export default function FreelancerDetailPage({ params }: { params: { id: string } }) {
-  if (!params || !params.id) {
+export default function FreelancerDetailPage() {
+  const params = useParams(); // Fetch params dynamically
+
+  if (!params?.id) {
     notFound();
   }
 
-  const project = mockFreelancer.id === params.id ? mockFreelancer : null;
+  const id = String(params.id); // Ensure id is treated correctly
+  const freelancer = mockFreelancer.id === id ? mockFreelancer : null;
 
-  if (!project) {
+  if (!freelancer) {
     notFound();
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -82,7 +86,7 @@ export default function FreelancerDetailPage({ params }: { params: { id: string 
         </Link>
       </div>
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-        <FreelancerProfile freelancer={project} />
+        <FreelancerProfile freelancer={freelancer} />
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
           <Button icon={<Mail size={16} />} className="w-full sm:w-auto">
             Contact Freelancer
@@ -91,10 +95,10 @@ export default function FreelancerDetailPage({ params }: { params: { id: string 
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <FreelancerPortfolio portfolio={project.portfolio} />
+          <FreelancerPortfolio portfolio={freelancer.portfolio} />
         </div>
         <div>
-          <FreelancerReviews freelancerId={project.id} />
+          <FreelancerReviews freelancerId={freelancer.id} />
         </div>
       </div>
     </div>

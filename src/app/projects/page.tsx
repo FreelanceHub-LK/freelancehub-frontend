@@ -39,13 +39,12 @@ const mockProjects: Array<{
     status: "open",
     postedDate: "2025-03-28",
   },
-  // More projects...
 ];
 
 export default function ProjectsPage() {
   const handleApplyFilters = (filters: any) => {
     console.log("Applied filters:", filters);
-    // In a real app, this would filter the projects or trigger an API call
+
   };
 
   return (
