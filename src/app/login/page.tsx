@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { apiService } from "../../lib/api/axios-instance";
+import { signIn } from "next-auth/react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -15,6 +16,11 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +45,17 @@ export default function LoginPage() {
     setAuthError("");
 
     try {
+      const response = await apiService.post("/auth/login", {
+        email: data.email,
+        password: data.password,
+      });
+      
+      const authData = response.data as AuthResponse;
+      
+      localStorage.setItem("access_token", authData.accessToken);
+      localStorage.setItem("refresh_token", authData.refreshToken);
+      
+
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
@@ -46,16 +63,15 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setAuthError("Invalid email or password");
+        setAuthError("Session initialization failed");
         setIsLoading(false);
         return;
       }
 
       router.push("/dashboard");
-    } catch (error) {
-      setAuthError("An error occurred. Please try again.");
+    } catch (error: any) {
+      setAuthError(error.response?.data?.message || "Invalid email or password");
       setIsLoading(false);
-      throw error as Error;
     }
   };
 

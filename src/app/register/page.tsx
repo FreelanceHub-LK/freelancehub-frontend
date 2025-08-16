@@ -8,10 +8,12 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { apiService } from "../../lib/api/axios-instance";
 
 const registerSchema = z
   .object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Please enter a valid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
@@ -40,10 +42,12 @@ function RegisterForm() {
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -58,24 +62,13 @@ function RegisterForm() {
     setRegisterError("");
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          accountType: data.accountType,
-        }),
+      const response = await apiService.post("/auth/register", {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        accountType: data.accountType,
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Registration failed");
-      }
 
       await signIn("credentials", {
         redirect: false,
@@ -86,13 +79,13 @@ function RegisterForm() {
       router.push(
         data.accountType === "client"
           ? "/dashboard/client"
-          : "/dashboard/freelancer",
+          : "/dashboard/freelancer"
       );
-    } catch (error) {
+    } catch (error: any) {
       setRegisterError(
-        error instanceof Error
-          ? error.message
-          : "Registration failed. Please try again.",
+        error.response?.data?.message?.join(", ") ||
+          error.message ||
+          "Registration failed. Please try again."
       );
       setIsLoading(false);
     }
@@ -105,6 +98,14 @@ function RegisterForm() {
           ? "/dashboard/client"
           : "/dashboard/freelancer",
     });
+  };
+
+  const handleClientClick = () => {
+    setValue("accountType", "client");
+  };
+
+  const handleFreelancerClick = () => {
+    setValue("accountType", "freelancer");
   };
 
   return (
@@ -141,14 +142,7 @@ function RegisterForm() {
             <div className="flex justify-center space-x-4">
               <button
                 type="button"
-                onClick={() => {
-                  document
-                    .getElementById("client")
-                    ?.setAttribute("checked", "true");
-                  document
-                    .getElementById("freelancer")
-                    ?.removeAttribute("checked");
-                }}
+                onClick={handleClientClick}
                 className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
                   accountType === "client"
                     ? "bg-green-50 border-green-500 text-green-700"
@@ -156,7 +150,9 @@ function RegisterForm() {
                 }`}
               >
                 <Briefcase
-                  className={`h-6 w-6 ${accountType === "client" ? "text-green-500" : "text-gray-400"}`}
+                  className={`h-6 w-6 ${
+                    accountType === "client" ? "text-green-500" : "text-gray-400"
+                  }`}
                 />
                 <span className="mt-1 text-sm font-medium">
                   I&apos;m a Client
@@ -165,13 +161,7 @@ function RegisterForm() {
 
               <button
                 type="button"
-                onClick={() => {
-                  // This would be handled by the form state setter in a real implementation
-                  document
-                    .getElementById("freelancer")
-                    ?.setAttribute("checked", "true");
-                  document.getElementById("client")?.removeAttribute("checked");
-                }}
+                onClick={handleFreelancerClick}
                 className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
                   accountType === "freelancer"
                     ? "bg-green-50 border-green-500 text-green-700"
@@ -179,7 +169,11 @@ function RegisterForm() {
                 }`}
               >
                 <Code
-                  className={`h-6 w-6 ${accountType === "freelancer" ? "text-green-500" : "text-gray-400"}`}
+                  className={`h-6 w-6 ${
+                    accountType === "freelancer"
+                      ? "text-green-500"
+                      : "text-gray-400"
+                  }`}
                 />
                 <span className="mt-1 text-sm font-medium">
                   I&apos;m a Freelancer
@@ -193,47 +187,69 @@ function RegisterForm() {
                 type="radio"
                 value="client"
                 {...register("accountType")}
-                defaultChecked={accountType === "client"}
               />
               <input
                 id="freelancer"
                 type="radio"
                 value="freelancer"
                 {...register("accountType")}
-                defaultChecked={accountType === "freelancer"}
               />
             </div>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* First Name */}
             <div>
               <label
-                htmlFor="name"
+                htmlFor="firstName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Full name
+                First name
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
-                  id="name"
+                  id="firstName"
                   type="text"
-                  autoComplete="name"
-                  className={`block w-full pl-10 pr-3 py-2 border ${
-                    errors.name ? "border-red-300" : "border-gray-300"
+                  autoComplete="given-name"
+                  {...register("firstName")}
+                  className={`block w-full pl-3 pr-3 py-2 border ${
+                    errors.firstName ? "border-red-300" : "border-gray-300"
                   } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                  placeholder="John Doe"
-                  {...register("name")}
                 />
               </div>
-              {errors.name && (
+              {errors.firstName && (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.name.message}
+                  {errors.firstName.message}
                 </p>
               )}
             </div>
+
+            {/* Last Name */}
+            <div>
+              <label
+                htmlFor="lastName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Last name
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <input
+                  id="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  {...register("lastName")}
+                  className={`block w-full pl-3 pr-3 py-2 border ${
+                    errors.lastName ? "border-red-300" : "border-gray-300"
+                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
+                />
+              </div>
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.lastName.message}
+                </p>
+              )}
+            </div>
+
 
             <div>
               <label
@@ -373,6 +389,7 @@ function RegisterForm() {
 
             <div className="mt-6">
               <button
+                type="button"
                 onClick={handleGoogleSignUp}
                 className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
