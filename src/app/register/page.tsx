@@ -2,12 +2,18 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { Mail, Lock, User, Eye, EyeOff, Briefcase, Code } from "lucide-react";
-import { signIn } from "next-auth/react";
+import { Mail, Lock, User, Eye, EyeOff, Briefcase, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { signIn } from "next-auth/react";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { SocialAuth } from "@/components/auth/SocialAuth";
+import { RoleCard } from "@/components/ui/RoleCard";
+import { OTPVerification } from "@/components/auth/OTPVerification";
 import { apiService } from "../../lib/api/axios-instance";
 
 const registerSchema = z
@@ -15,9 +21,11 @@ const registerSchema = z
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Please enter a valid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
-    accountType: z.enum(["client", "freelancer"]),
+    role: z.enum(["client", "freelancer"]),
+    location: z.string().optional(),
+    phone: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -26,16 +34,28 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+interface AuthResponse {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  accessToken: string;
+  refreshToken: string;
+  profilePicture?: string;
+}
+
+type RegistrationStep = "role" | "details" | "verification";
+
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>("role");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerError, setRegisterError] = useState("");
 
-  const defaultAccountType =
-    searchParams.get("type") === "freelancer" ? "freelancer" : "client";
+  const defaultRole = (searchParams.get("type") === "freelancer" ? "freelancer" : "client") as "client" | "freelancer";
 
   const {
     register,
@@ -43,6 +63,7 @@ function RegisterForm() {
     formState: { errors },
     watch,
     setValue,
+    getValues,
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -51,11 +72,40 @@ function RegisterForm() {
       email: "",
       password: "",
       confirmPassword: "",
-      accountType: defaultAccountType as "client" | "freelancer",
+      role: defaultRole,
+      location: "",
+      phone: "",
     },
   });
 
-  const accountType = watch("accountType");
+  const watchedRole = watch("role");
+
+  const roleOptions = [
+    {
+      id: "client",
+      title: "I'm a Client",
+      description: "I want to hire talented freelancers for my projects",
+      icon: <Briefcase className="w-6 h-6" />,
+      features: [
+        "Post unlimited projects",
+        "Browse freelancer profiles",
+        "Secure payment system",
+        "24/7 customer support"
+      ]
+    },
+    {
+      id: "freelancer",
+      title: "I'm a Freelancer",
+      description: "I want to offer my skills and find great work opportunities",
+      icon: <Users className="w-6 h-6" />,
+      features: [
+        "Create a professional profile",
+        "Bid on projects",
+        "Showcase your portfolio",
+        "Get paid securely"
+      ]
+    }
+  ];
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
@@ -67,365 +117,355 @@ function RegisterForm() {
         lastName: data.lastName,
         email: data.email,
         password: data.password,
-        accountType: data.accountType,
+        role: data.role,
+        location: data.location,
+        phone: data.phone,
       });
 
-      await signIn("credentials", {
-        redirect: false,
+      // Send OTP for email verification
+      await apiService.post("/auth/send-otp", {
         email: data.email,
-        password: data.password,
       });
 
-      router.push(
-        data.accountType === "client"
-          ? "/dashboard/client"
-          : "/dashboard/freelancer"
-      );
+      setCurrentStep("verification");
     } catch (error: any) {
+      console.error("Registration error:", error);
       setRegisterError(
-        error.response?.data?.message?.join(", ") ||
-          error.message ||
-          "Registration failed. Please try again."
+        error.response?.data?.message || 
+        "Registration failed. Please try again."
       );
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignUp = () => {
-    signIn("google", {
-      callbackUrl:
-        accountType === "client"
-          ? "/dashboard/client"
-          : "/dashboard/freelancer",
-    });
+  const handleOTPVerification = async (otp: string) => {
+    setIsLoading(true);
+    setRegisterError("");
+
+    try {
+      await apiService.post("/auth/verify-otp", {
+        email: getValues("email"),
+        otp,
+      });
+
+      // Log in the user after verification
+      const loginResponse = await apiService.post("/auth/login", {
+        email: getValues("email"),
+        password: getValues("password"),
+      });
+
+      const authResponse: AuthResponse = loginResponse.data as AuthResponse;
+
+      // Store tokens
+      localStorage.setItem("access_token", authResponse.accessToken);
+      localStorage.setItem("refresh_token", authResponse.refreshToken);
+      localStorage.setItem("user", JSON.stringify({
+        id: authResponse.id,
+        name: authResponse.name,
+        email: authResponse.email,
+        role: authResponse.role,
+        profilePicture: authResponse.profilePicture,
+      }));
+
+      // Redirect based on role
+      const redirectPath = authResponse.role === "client" ? "/projects" : "/freelancers";
+      router.push(redirectPath);
+    } catch (error: any) {
+      console.error("OTP verification error:", error);
+      setRegisterError(
+        error.response?.data?.message || 
+        "Email verification failed. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleClientClick = () => {
-    setValue("accountType", "client");
+  const handleResendOTP = async () => {
+    setIsLoading(true);
+    setRegisterError("");
+
+    try {
+      await apiService.post("/auth/send-otp", {
+        email: getValues("email"),
+      });
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      setRegisterError(
+        error.response?.data?.message || 
+        "Failed to resend OTP. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFreelancerClick = () => {
-    setValue("accountType", "freelancer");
+  const handleGoogleSignIn = async () => {
+    try {
+      await signIn("google", {
+        callbackUrl: "/",
+      });
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setRegisterError("Google sign-in failed. Please try again.");
+    }
+  };
+
+  const handleNextStep = () => {
+    if (currentStep === "role") {
+      setCurrentStep("details");
+    }
+  };
+
+  const handleBackStep = () => {
+    if (currentStep === "details") {
+      setCurrentStep("role");
+    } else if (currentStep === "verification") {
+      setCurrentStep("details");
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case "role":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Choose Your Account Type
+              </h2>
+              <p className="text-gray-600">
+                Select how you plan to use FreelanceHub
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {roleOptions.map((option) => (
+                <RoleCard
+                  key={option.id}
+                  title={option.title}
+                  description={option.description}
+                  icon={option.icon}
+                  features={option.features}
+                  isSelected={watchedRole === option.id}
+                  onClick={() => setValue("role", option.id as "client" | "freelancer")}
+                />
+              ))}
+            </div>
+
+            <Button
+              onClick={handleNextStep}
+              fullWidth
+              disabled={!watchedRole}
+            >
+              Continue
+            </Button>
+          </div>
+        );
+
+      case "details":
+        return (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {registerError && (
+              <Alert
+                variant="error"
+                description={registerError}
+                onClose={() => setRegisterError("")}
+              />
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                {...register("firstName")}
+                label="First Name"
+                placeholder="Enter your first name"
+                icon={<User className="w-4 h-4" />}
+                error={errors.firstName?.message}
+                disabled={isLoading}
+              />
+
+              <Input
+                {...register("lastName")}
+                label="Last Name"
+                placeholder="Enter your last name"
+                icon={<User className="w-4 h-4" />}
+                error={errors.lastName?.message}
+                disabled={isLoading}
+              />
+            </div>
+
+            <Input
+              {...register("email")}
+              type="email"
+              label="Email Address"
+              placeholder="Enter your email"
+              icon={<Mail className="w-4 h-4" />}
+              error={errors.email?.message}
+              disabled={isLoading}
+            />
+
+            <Input
+              {...register("password")}
+              type={showPassword ? "text" : "password"}
+              label="Password"
+              placeholder="Create a password"
+              icon={<Lock className="w-4 h-4" />}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              }
+              error={errors.password?.message}
+              disabled={isLoading}
+              helperText="Must be at least 6 characters"
+            />
+
+            <Input
+              {...register("confirmPassword")}
+              type={showConfirmPassword ? "text" : "password"}
+              label="Confirm Password"
+              placeholder="Confirm your password"
+              icon={<Lock className="w-4 h-4" />}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              }
+              error={errors.confirmPassword?.message}
+              disabled={isLoading}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                {...register("location")}
+                label="Location (Optional)"
+                placeholder="City, Country"
+                disabled={isLoading}
+              />
+
+              <Input
+                {...register("phone")}
+                label="Phone (Optional)"
+                placeholder="+1 (555) 123-4567"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBackStep}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Back
+              </Button>
+              
+              <Button
+                type="submit"
+                isLoading={isLoading}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Create Account
+              </Button>
+            </div>
+          </form>
+        );
+
+      case "verification":
+        return (
+          <OTPVerification
+            email={getValues("email")}
+            onVerify={handleOTPVerification}
+            onResend={handleResendOTP}
+            isLoading={isLoading}
+            error={registerError}
+            onBack={handleBackStep}
+          />
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="relative w-12 h-12">
-            <Image src="/logo.png" alt="Logo" fill className="rounded-full" />
+    <AuthLayout
+      title="Create Your Account"
+      subtitle="Join thousands of freelancers and clients on FreelanceHub"
+      backLink={{
+        href: "/",
+        label: "Back to Home"
+      }}
+    >
+      {currentStep !== "role" && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span>Step {currentStep === "details" ? "2" : "3"} of 3</span>
+            <span>
+              {currentStep === "details" ? "Account Details" : "Email Verification"}
+            </span>
+          </div>
+          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-green-600 h-2 rounded-full transition-all duration-300"
+              style={{ 
+                width: currentStep === "details" ? "66%" : "100%" 
+              }}
+            />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{" "}
-          <Link
-            href="/login"
-            className="font-medium text-green-600 hover:text-green-500"
-          >
-            sign in to your existing account
-          </Link>
-        </p>
-      </div>
+      )}
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {registerError && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-              {registerError}
-            </div>
-          )}
+      {renderStepContent()}
 
-          <div className="mb-6">
-            <div className="flex justify-center space-x-4">
-              <button
-                type="button"
-                onClick={handleClientClick}
-                className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
-                  accountType === "client"
-                    ? "bg-green-50 border-green-500 text-green-700"
-                    : "border-gray-300 text-gray-500 hover:bg-gray-50"
-                }`}
+      {currentStep === "details" && (
+        <>
+          <SocialAuth
+            onGoogleSignIn={handleGoogleSignIn}
+            isLoading={isLoading}
+            disabled={isLoading}
+          />
+
+          <div className="text-center">
+            <p className="text-gray-600">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="text-green-600 hover:text-green-500 font-medium transition-colors"
               >
-                <Briefcase
-                  className={`h-6 w-6 ${
-                    accountType === "client" ? "text-green-500" : "text-gray-400"
-                  }`}
-                />
-                <span className="mt-1 text-sm font-medium">
-                  I&apos;m a Client
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleFreelancerClick}
-                className={`flex-1 py-3 px-4 rounded-md flex flex-col items-center justify-center border ${
-                  accountType === "freelancer"
-                    ? "bg-green-50 border-green-500 text-green-700"
-                    : "border-gray-300 text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                <Code
-                  className={`h-6 w-6 ${
-                    accountType === "freelancer"
-                      ? "text-green-500"
-                      : "text-gray-400"
-                  }`}
-                />
-                <span className="mt-1 text-sm font-medium">
-                  I&apos;m a Freelancer
-                </span>
-              </button>
-            </div>
-
-            <div className="hidden">
-              <input
-                id="client"
-                type="radio"
-                value="client"
-                {...register("accountType")}
-              />
-              <input
-                id="freelancer"
-                type="radio"
-                value="freelancer"
-                {...register("accountType")}
-              />
-            </div>
+                Sign in
+              </Link>
+            </p>
           </div>
-
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* First Name */}
-            <div>
-              <label
-                htmlFor="firstName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                First name
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <input
-                  id="firstName"
-                  type="text"
-                  autoComplete="given-name"
-                  {...register("firstName")}
-                  className={`block w-full pl-3 pr-3 py-2 border ${
-                    errors.firstName ? "border-red-300" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                />
-              </div>
-              {errors.firstName && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.firstName.message}
-                </p>
-              )}
-            </div>
-
-            {/* Last Name */}
-            <div>
-              <label
-                htmlFor="lastName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Last name
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <input
-                  id="lastName"
-                  type="text"
-                  autoComplete="family-name"
-                  {...register("lastName")}
-                  className={`block w-full pl-3 pr-3 py-2 border ${
-                    errors.lastName ? "border-red-300" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                />
-              </div>
-              {errors.lastName && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.lastName.message}
-                </p>
-              )}
-            </div>
-
-
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email address
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  className={`block w-full pl-10 pr-3 py-2 border ${
-                    errors.email ? "border-red-300" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                  placeholder="you@example.com"
-                  {...register("email")}
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  className={`block w-full pl-10 pr-10 py-2 border ${
-                    errors.password ? "border-red-300" : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                  {...register("password")}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Confirm password
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  className={`block w-full pl-10 pr-10 py-2 border ${
-                    errors.confirmPassword
-                      ? "border-red-300"
-                      : "border-gray-300"
-                  } rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500`}
-                  {...register("confirmPassword")}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Creating account..." : "Create account"}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={handleGoogleSignUp}
-                className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                Sign up with Google
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 text-center text-xs text-gray-500">
-            By creating an account, you agree to our{" "}
-            <Link href="/terms" className="text-green-600 hover:text-green-500">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/privacy"
-              className="text-green-600 hover:text-green-500"
-            >
-              Privacy Policy
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </AuthLayout>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center items-center min-h-screen">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<div>Loading...</div>}>
       <RegisterForm />
     </Suspense>
   );

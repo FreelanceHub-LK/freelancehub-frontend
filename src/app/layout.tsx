@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientProvider from "@/components/ui/ClientProvide";
 import { ToastProvider } from "@/context/toast-context";
+import { AuthProvider } from "@/context/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Freelancer Platform",
-  description: "Connect freelancers with clients in Sri Lanka",
+  title: "FreelanceHub - Connect Freelancers with Clients",
+  description: "Join thousands of freelancers and clients on FreelanceHub",
 };
 
 export default function RootLayout({
@@ -30,7 +31,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ToastProvider>
-          <ClientProvider>{children}</ClientProvider>
+          <ClientProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </ClientProvider>
         </ToastProvider>
       </body>
     </html>
