@@ -1,70 +1,73 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-
-interface FilterState {
-  category: string;
-  hourlyRate: {
-    min: number;
-    max: number;
-  };
-  skills: string[];
-  rating: number;
-}
+import { useSkills } from "@/hooks/useFreelancers";
+import { FreelancerFilters as IFreelancerFilters } from "@/lib/api/freelancer";
 
 interface FreelancerFiltersProps {
-  onApplyFilters: (filters: FilterState) => void;
+  onApplyFilters: (filters: IFreelancerFilters) => void;
+  initialFilters?: IFreelancerFilters;
 }
 
 export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
   onApplyFilters,
+  initialFilters = {}
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    category: "",
-    hourlyRate: { min: 0, max: 10000 },
+  const { skills, categories, popularSkills, loading: skillsLoading } = useSkills();
+  
+  const [filters, setFilters] = useState<IFreelancerFilters>({
     skills: [],
-    rating: 0,
+    minRate: 0,
+    maxRate: 10000,
+    minRating: 0,
+    location: "",
+    availability: undefined,
+    categories: [],
+    search: "",
+    sortBy: "rating",
+    sortOrder: "desc",
+    ...initialFilters
   });
 
-  const categories = [
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialFilters.skills || []);
+  const [skillSearchQuery, setSkillSearchQuery] = useState("");
+  const [skillSearchResults, setSkillSearchResults] = useState<any[]>([]);
+
+  const allCategories = [
     "All Categories",
-    "Web Development",
+    "Web Development", 
     "Mobile Development",
-    "Design",
-    "Writing",
-    "Marketing",
-    "IT & Software",
-    "Data Entry",
-    "Translation",
+    "UI/UX Design",
+    "Data Science",
+    "Digital Marketing",
+    "Content Writing",
+    "Graphic Design",
+    "Software Development",
+    "DevOps",
+    ...categories
   ];
 
-  const skillOptions = [
-    "React",
-    "Angular",
-    "Vue",
-    "Node.js",
-    "Python",
-    "Java",
-    "PHP",
-    "WordPress",
-    "Mobile App Development",
-    "UI/UX Design",
-    "Graphic Design",
-    "Content Writing",
-    "Digital Marketing",
-    "SEO",
-  ];
+  useEffect(() => {
+    if (skillSearchQuery.trim()) {
+      const filtered = skills.filter(skill => 
+        skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase())
+      );
+      setSkillSearchResults(filtered);
+    } else {
+      setSkillSearchResults([]);
+    }
+  }, [skillSearchQuery, skills]);
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilters({ ...filters, category: e.target.value });
+    setFilters({ ...filters, categories: [e.target.value] });
   };
 
   const handleSkillToggle = (skill: string) => {
     setFilters((prev) => {
-      const updatedSkills = prev.skills.includes(skill)
-        ? prev.skills.filter((s) => s !== skill)
-        : [...prev.skills, skill];
+      const updatedSkills = (prev.skills || []).includes(skill)
+        ? (prev.skills || []).filter((s) => s !== skill)
+        : [...(prev.skills || []), skill];
       return { ...prev, skills: updatedSkills };
     });
   };
@@ -73,7 +76,7 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
     const value = parseInt(e.target.value) || 0;
     setFilters({
       ...filters,
-      hourlyRate: { ...filters.hourlyRate, min: value },
+      minRate: value,
     });
   };
 
@@ -81,12 +84,12 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
     const value = parseInt(e.target.value) || 0;
     setFilters({
       ...filters,
-      hourlyRate: { ...filters.hourlyRate, max: value },
+      maxRate: value,
     });
   };
 
   const handleRatingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilters({ ...filters, rating: parseInt(e.target.value) });
+    setFilters({ ...filters, minRating: parseInt(e.target.value) });
   };
 
   const handleApply = () => {
@@ -95,10 +98,16 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
 
   const handleReset = () => {
     setFilters({
-      category: "",
-      hourlyRate: { min: 0, max: 10000 },
       skills: [],
-      rating: 0,
+      minRate: 0,
+      maxRate: 10000,
+      minRating: 0,
+      location: "",
+      availability: undefined,
+      categories: [],
+      search: "",
+      sortBy: "rating",
+      sortOrder: "desc",
     });
   };
 
@@ -121,14 +130,18 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
             <select
               className="w-full p-2 border border-gray-300 rounded-md"
               title="Category List"
-              value={filters.category}
+              value={filters.categories?.[0] || ""}
               onChange={handleCategoryChange}
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat === "All Categories" ? "" : cat}>
-                  {cat}
-                </option>
-              ))}
+              {allCategories.map((cat, index) => {
+                const catValue = typeof cat === 'string' ? cat : cat.name;
+                const catKey = typeof cat === 'string' ? cat : cat._id;
+                return (
+                  <option key={catKey} value={catValue === "All Categories" ? "" : catValue}>
+                    {catValue}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -141,7 +154,7 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
                 type="number"
                 placeholder="Min"
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={filters.hourlyRate.min || ""}
+                value={filters.minRate || ""}
                 onChange={handleMinRateChange}
               />
               <span>-</span>
@@ -149,7 +162,7 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
                 type="number"
                 placeholder="Max"
                 className="w-full p-2 border border-gray-300 rounded-md"
-                value={filters.hourlyRate.max || ""}
+                value={filters.maxRate || ""}
                 onChange={handleMaxRateChange}
               />
             </div>
@@ -161,7 +174,7 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
             </label>
             <select
               className="w-full p-2 border border-gray-300 rounded-md"
-              value={filters.rating}
+              value={filters.minRating || 0}
               onChange={handleRatingChange}
               title="Minimum Rating"
               aria-label="Minimum Rating"
@@ -177,17 +190,17 @@ export const FreelancerFilters: React.FC<FreelancerFiltersProps> = ({
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">Skills</label>
           <div className="flex flex-wrap gap-2">
-            {skillOptions.map((skill) => (
-              <div key={skill} className="flex items-center">
+            {skills.slice(0, 10).map((skill) => (
+              <div key={skill.name} className="flex items-center">
                 <input
                   type="checkbox"
-                  id={`skill-${skill}`}
-                  checked={filters.skills.includes(skill)}
-                  onChange={() => handleSkillToggle(skill)}
+                  id={`skill-${skill.name}`}
+                  checked={(filters.skills || []).includes(skill.name)}
+                  onChange={() => handleSkillToggle(skill.name)}
                   className="mr-1"
                 />
-                <label htmlFor={`skill-${skill}`} className="text-sm">
-                  {skill}
+                <label htmlFor={`skill-${skill.name}`} className="text-sm">
+                  {skill.name}
                 </label>
               </div>
             ))}
