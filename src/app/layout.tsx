@@ -4,20 +4,44 @@ import "./globals.css";
 import ClientProvider from "@/components/ui/ClientProvide";
 import { ToastProvider } from "@/context/toast-context";
 import { AuthProvider } from "@/context/auth-context";
+import PerformanceMonitor from "@/components/PerformanceMonitor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: 'swap', // Optimize font loading
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: 'swap', // Optimize font loading
 });
 
 export const metadata: Metadata = {
   title: "FreelanceHub - Connect Freelancers with Clients",
-  description: "Join thousands of freelancers and clients on FreelanceHub",
+  description: "Join thousands of freelancers and clients on FreelanceHub. Find top talent or discover your next project opportunity.",
+  keywords: "freelance, freelancers, clients, projects, jobs, remote work",
+  authors: [{ name: "FreelanceHub Team" }],
+  openGraph: {
+    title: "FreelanceHub - Connect Freelancers with Clients",
+    description: "Join thousands of freelancers and clients on FreelanceHub",
+    type: "website",
+    url: "https://freelancehub.com",
+    siteName: "FreelanceHub",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FreelanceHub - Connect Freelancers with Clients",
+    description: "Join thousands of freelancers and clients on FreelanceHub",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  verification: {
+    google: "google-site-verification-code", // Add your verification code
+  },
 };
 
 export default function RootLayout({
@@ -30,6 +54,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <PerformanceMonitor />
         <ToastProvider>
           <ClientProvider>
             <AuthProvider>

@@ -4,10 +4,13 @@ import axios from "axios";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
-  timeout: 10000, 
+  timeout: 15000, // Increased timeout for better performance
   headers: {
     "Content-Type": "application/json",
   },
+  // Performance optimizations
+  withCredentials: false, // Don't send cookies unless needed
+  validateStatus: (status) => status < 500, // Only reject 5xx errors
 });
 
 apiClient.interceptors.request.use(
