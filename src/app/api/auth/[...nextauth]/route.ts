@@ -11,10 +11,18 @@ interface UserResponse {
   email: string;
   role: string;
   profilePicture?: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 interface GoogleCallbackResponse {
+  id: string;
+  name: string;
+  email: string;
   role: string;
+  profilePicture?: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 declare module "next-auth" {
@@ -24,6 +32,8 @@ declare module "next-auth" {
     email?: string;
     role?: string;
     image?: string;
+    accessToken?: string;
+    refreshToken?: string;
   }
   
   interface Session {
@@ -34,6 +44,8 @@ declare module "next-auth" {
       image?: string | null;
       role?: string;
     }
+    accessToken?: string;
+    refreshToken?: string;
   }
 }
 
@@ -93,20 +105,34 @@ const authOptions: NextAuthOptions = {
         
         if (account.provider === "google") {
           try {
-            const response = await axios.post<GoogleCallbackResponse>(`http://localhost:8000/auth/google/callback`, {
-              token: account.id_token,
-            });
+            // Send Google user data to our backend for processing
+            const googleUser = {
+              email: user.email,
+              firstName: user.name?.split(' ')[0] || '',
+              lastName: user.name?.split(' ').slice(1).join(' ') || '',
+              googleId: account.providerAccountId,
+              profilePicture: user.image,
+            };
+
+            const response = await axios.post<GoogleCallbackResponse>(
+              `${process.env.BACKEND_URL || 'http://localhost:8000'}/auth/google/login`, 
+              googleUser
+            );
            
             const data = response.data;
            
             if (response.status === 200) {
               token.role = data.role;
+              token.accessToken = data.accessToken;
+              token.refreshToken = data.refreshToken;
             }
           } catch (error) {
             console.error("Google verification error:", error);
           }
         } else {
           token.role = user.role;
+          token.accessToken = user.accessToken;
+          token.refreshToken = user.refreshToken;
         }
       }
      
@@ -117,6 +143,8 @@ const authOptions: NextAuthOptions = {
         session.user.id = token.sub || '';
         session.user.role = (token.role as string) || 'CLIENT';
       }
+      session.accessToken = token.accessToken as string;
+      session.refreshToken = token.refreshToken as string;
       return session;
     },
   },
