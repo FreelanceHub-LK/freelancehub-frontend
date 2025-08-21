@@ -108,6 +108,7 @@ export default function LoginPage() {
         href: "/",
         label: "Back to Home"
       }}
+      wide={true}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {authError && (

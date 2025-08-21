@@ -2,7 +2,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, User, Eye, EyeOff, Briefcase, Users } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Briefcase, Users, MapPin, Phone } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,9 @@ import { Alert } from "@/components/ui/Alert";
 import { SocialAuth } from "@/components/auth/SocialAuth";
 import { RoleCard } from "@/components/ui/RoleCard";
 import { OTPVerification } from "@/components/auth/OTPVerification";
+import { SkillsSelection } from "@/components/auth/SkillsSelection";
+import { PasskeySetup } from "@/components/auth/PasskeySetup";
+import { freelancerApi, passkeyApi, webAuthnUtils } from "@/lib/api/registration";
 import { apiService } from "../../lib/api/axios-instance";
 
 const registerSchema = z
@@ -44,7 +47,7 @@ interface AuthResponse {
   profilePicture?: string;
 }
 
-type RegistrationStep = "role" | "details" | "verification";
+type RegistrationStep = "role" | "details" | "verification" | "skills" | "passkey" | "complete";
 
 function RegisterForm() {
   const router = useRouter();
@@ -54,6 +57,8 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [registeredUser, setRegisteredUser] = useState<AuthResponse | null>(null);
 
   const defaultRole = (searchParams.get("type") === "freelancer" ? "freelancer" : "client") as "client" | "freelancer";
 
@@ -156,6 +161,7 @@ function RegisterForm() {
       });
 
       const authResponse: AuthResponse = loginResponse.data as AuthResponse;
+      setRegisteredUser(authResponse);
 
       // Store tokens
       localStorage.setItem("access_token", authResponse.accessToken);
@@ -168,9 +174,12 @@ function RegisterForm() {
         profilePicture: authResponse.profilePicture,
       }));
 
-      // Redirect based on role
-      const redirectPath = authResponse.role === "client" ? "/projects" : "/freelancers";
-      router.push(redirectPath);
+      // Determine next step based on role
+      if (authResponse.role === "freelancer") {
+        setCurrentStep("skills");
+      } else {
+        setCurrentStep("passkey");
+      }
     } catch (error: any) {
       console.error("OTP verification error:", error);
       setRegisterError(
@@ -201,6 +210,59 @@ function RegisterForm() {
     }
   };
 
+  const handleSkillsSubmit = async () => {
+    if (selectedSkills.length === 0) return;
+    
+    setIsLoading(true);
+    try {
+      // Update freelancer profile with skills
+      await freelancerApi.updateSkills(selectedSkills);
+      setCurrentStep("passkey");
+    } catch (error: any) {
+      console.error("Skills update error:", error);
+      setRegisterError("Failed to save skills. You can add them later in your profile.");
+      setCurrentStep("passkey");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkillsSkip = () => {
+    setCurrentStep("passkey");
+  };
+
+  const handlePasskeySetup = async (deviceName: string) => {
+    try {
+      if (!webAuthnUtils.isWebAuthnSupported()) {
+        throw new Error('WebAuthn is not supported in this browser');
+      }
+
+      // Get registration options from the server
+      const options = await passkeyApi.initiateRegistration(deviceName);
+      
+      // Create the credential using WebAuthn
+      const credential = await webAuthnUtils.createCredential(options);
+      
+      // Complete registration on the server
+      await passkeyApi.completeRegistration(credential, deviceName);
+      
+      setCurrentStep("complete");
+    } catch (error: any) {
+      console.error("Passkey setup error:", error);
+      throw new Error(error.response?.data?.message || error.message || "Failed to setup passkey");
+    }
+  };
+
+  const handlePasskeySkip = () => {
+    setCurrentStep("complete");
+  };
+
+  const handleCompleteRegistration = () => {
+    // Redirect based on role
+    const redirectPath = registeredUser?.role === "client" ? "/projects" : "/freelancer-dashboard";
+    router.push(redirectPath);
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       await signIn("google", {
@@ -223,6 +285,36 @@ function RegisterForm() {
       setCurrentStep("role");
     } else if (currentStep === "verification") {
       setCurrentStep("details");
+    } else if (currentStep === "skills") {
+      setCurrentStep("verification");
+    } else if (currentStep === "passkey") {
+      setCurrentStep(watchedRole === "freelancer" ? "skills" : "verification");
+    }
+  };
+
+  const getStepNumber = () => {
+    const steps = ["role", "details", "verification"];
+    if (watchedRole === "freelancer") {
+      steps.push("skills", "passkey");
+    } else {
+      steps.push("passkey");
+    }
+    return steps.indexOf(currentStep) + 1;
+  };
+
+  const getTotalSteps = () => {
+    return watchedRole === "freelancer" ? 5 : 4;
+  };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case "role": return "Choose Role";
+      case "details": return "Account Details";
+      case "verification": return "Email Verification";
+      case "skills": return "Add Skills";
+      case "passkey": return "Security Setup";
+      case "complete": return "Welcome!";
+      default: return "";
     }
   };
 
@@ -240,7 +332,7 @@ function RegisterForm() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {roleOptions.map((option) => (
                 <RoleCard
                   key={option.id}
@@ -275,7 +367,7 @@ function RegisterForm() {
               />
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Input
                 {...register("firstName")}
                 label="First Name"
@@ -352,11 +444,12 @@ function RegisterForm() {
               disabled={isLoading}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Input
                 {...register("location")}
                 label="Location (Optional)"
                 placeholder="City, Country"
+                icon={<MapPin className="w-4 h-4" />}
                 disabled={isLoading}
               />
 
@@ -364,17 +457,18 @@ function RegisterForm() {
                 {...register("phone")}
                 label="Phone (Optional)"
                 placeholder="+1 (555) 123-4567"
+                icon={<Phone className="w-4 h-4" />}
                 disabled={isLoading}
               />
             </div>
 
-            <div className="flex space-x-4">
+            <div className="flex flex-col lg:flex-row gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBackStep}
                 disabled={isLoading}
-                className="flex-1"
+                className="lg:flex-1"
               >
                 Back
               </Button>
@@ -383,7 +477,7 @@ function RegisterForm() {
                 type="submit"
                 isLoading={isLoading}
                 disabled={isLoading}
-                className="flex-1"
+                className="lg:flex-1"
               >
                 Create Account
               </Button>
@@ -403,10 +497,90 @@ function RegisterForm() {
           />
         );
 
+      case "skills":
+        return (
+          <SkillsSelection
+            selectedSkills={selectedSkills}
+            onSkillsChange={setSelectedSkills}
+            onNext={handleSkillsSubmit}
+            onSkip={handleSkillsSkip}
+            isLoading={isLoading}
+          />
+        );
+
+      case "passkey":
+        return (
+          <PasskeySetup
+            onSetupPasskey={handlePasskeySetup}
+            onSkip={handlePasskeySkip}
+            isLoading={isLoading}
+            error={registerError}
+          />
+        );
+
+      case "complete":
+        return (
+          <div className="text-center space-y-6">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Users className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2">
+              Welcome to FreelanceHub!
+            </h2>
+            <p className="text-gray-600 text-sm md:text-base">
+              Your account has been successfully created. You're now ready to start your freelance journey.
+            </p>
+            
+            <div className="bg-green-50 p-4 rounded-lg text-left">
+              <h3 className="font-medium text-green-900 mb-2">What's next?</h3>
+              <ul className="text-sm text-green-800 space-y-1">
+                {watchedRole === "freelancer" ? (
+                  <>
+                    <li>• Complete your profile with portfolio and experience</li>
+                    <li>• Browse and apply to projects</li>
+                    <li>• Build your reputation with quality work</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Post your first project</li>
+                    <li>• Browse freelancer profiles</li>
+                    <li>• Start collaborating with talented professionals</li>
+                  </>
+                )}
+              </ul>
+            </div>
+
+            <Button onClick={handleCompleteRegistration} className="w-full">
+              {watchedRole === "freelancer" ? "Go to Dashboard" : "Browse Projects"}
+            </Button>
+          </div>
+        );
+
       default:
         return null;
     }
   };
+
+  const getLayoutConfig = () => {
+    switch (currentStep) {
+      case "role":
+        return { wide: true, layout: 'standard' as const };
+      case "details":
+        return { wide: true, layout: 'compact' as const };
+      case "verification":
+        return { wide: false, layout: 'compact' as const };
+      case "skills":
+        return { wide: true, layout: 'full' as const };
+      case "passkey":
+        return { wide: true, layout: 'standard' as const };
+      case "complete":
+        return { wide: true, layout: 'standard' as const };
+      default:
+        return { wide: false, layout: 'standard' as const };
+    }
+  };
+
+  const layoutConfig = getLayoutConfig();
 
   return (
     <AuthLayout
@@ -416,20 +590,20 @@ function RegisterForm() {
         href: "/",
         label: "Back to Home"
       }}
+      wide={layoutConfig.wide}
+      layout={layoutConfig.layout}
     >
-      {currentStep !== "role" && (
+      {currentStep !== "role" && currentStep !== "complete" && (
         <div className="mb-6">
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>Step {currentStep === "details" ? "2" : "3"} of 3</span>
-            <span>
-              {currentStep === "details" ? "Account Details" : "Email Verification"}
-            </span>
+            <span>Step {getStepNumber()} of {getTotalSteps()}</span>
+            <span>{getStepTitle()}</span>
           </div>
           <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-green-600 h-2 rounded-full transition-all duration-300"
               style={{ 
-                width: currentStep === "details" ? "66%" : "100%" 
+                width: `${(getStepNumber() / getTotalSteps()) * 100}%`
               }}
             />
           </div>
