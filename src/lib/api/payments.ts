@@ -1,5 +1,32 @@
 import apiClient from "../../api/axios-instance";
 
+export interface CreatePaymentRequest {
+  amount: number;
+  currency: string;
+  type: 'project_payment' | 'milestone_payment' | 'escrow_release' | 'refund' | 'withdrawal';
+  method: 'stripe' | 'paypal' | 'bank_transfer' | 'wallet';
+  recipient: string;
+  project?: string;
+  contract?: string;
+  description?: string;
+  escrowDetails?: {
+    isEscrow: boolean;
+    escrowReleaseConditions?: string[];
+    milestoneId?: string;
+    autoReleaseEnabled?: boolean;
+    autoReleaseDays?: number;
+  };
+  metadata?: Record<string, any>;
+}
+
+export interface PaymentResponse {
+  payment: Payment;
+  redirectUrl?: string;
+  clientSecret?: string;
+  status: string;
+  message: string;
+}
+
 export interface Payment {
   _id: string;
   amount: number;
@@ -224,5 +251,17 @@ export const paymentApi = {
   getProjectPayments: async (projectId: string): Promise<{ success: boolean; data: Payment[] }> => {
     const response = await apiClient.get(`/payments/project/${projectId}`);
     return response.data as { success: boolean; data: Payment[] };
+  },
+
+  // Capture PayPal payment
+  capturePayPalPayment: async (paymentId: string, paypalOrderId: string): Promise<{ success: boolean; message: string; data?: any }> => {
+    const response = await apiClient.post(`/payments/paypal/capture/${paymentId}`, { paypalOrderId });
+    return response.data as { success: boolean; message: string; data?: any };
+  },
+
+  // Cancel payment
+  cancelPayment: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.patch(`/payments/${id}/cancel`);
+    return response.data as { success: boolean; message: string };
   },
 };

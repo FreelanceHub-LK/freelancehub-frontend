@@ -34,6 +34,21 @@ export function CardHeader({ children, className, ...props }: CardHeaderProps) {
   );
 }
 
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  children: React.ReactNode;
+}
+
+export function CardTitle({ children, className, ...props }: CardTitleProps) {
+  return (
+    <h3
+      className={clsx('text-lg font-semibold text-gray-900', className)}
+      {...props}
+    >
+      {children}
+    </h3>
+  );
+}
+
 interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
