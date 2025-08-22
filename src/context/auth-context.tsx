@@ -74,9 +74,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(userData));
       setUser(userData);
 
-      // Redirect based on role
-      const redirectPath = authResponse.role === "client" ? "/projects" : "/freelancers";
-      router.push(redirectPath);
+      // Redirect based on role and profile completion
+      if (authResponse.role === "freelancer") {
+        try {
+          // Check if freelancer profile exists
+          await apiService.get("/freelancers/me");
+          router.push("/dashboard");
+        } catch (profileError: any) {
+          if (profileError.response?.status === 404) {
+            // No freelancer profile found, redirect to setup
+            router.push("/freelancer/setup");
+          } else {
+            // Other error, go to dashboard anyway
+            router.push("/dashboard");
+          }
+        }
+      } else if (authResponse.role === "client") {
+        router.push("/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       throw error;
     }

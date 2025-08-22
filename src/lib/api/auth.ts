@@ -1,4 +1,4 @@
-import apiClient from "../../api/axios-instance";
+import { apiService } from "../../api/axios-instance";
 import { cache, cacheKeys } from '../cache';
 
 export interface LoginDto {
@@ -11,26 +11,21 @@ export interface RegisterDto {
   lastName: string;
   email: string;
   password: string;
-  role: 'freelancer' | 'client';
+  role?: 'freelancer' | 'client' | 'admin';
+  location?: string;
   phoneNumber?: string;
-  address?: string;
 }
 
 export interface AuthResponse {
-  success: boolean;
-  message: string;
-  data: {
-    user: {
-      _id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-      role: string;
-      profilePicture?: string;
-    };
-    accessToken: string;
-    refreshToken: string;
-  };
+  id: string;
+  name: string;
+  email: string;
+  role: 'freelancer' | 'client' | 'admin';
+  profilePicture?: string;
+  accessToken: string;
+  refreshToken?: string;
+  passkeyEnabled?: boolean;
+  passkeyCount?: number;
 }
 
 export interface SendOtpDto {
@@ -58,92 +53,97 @@ export interface ResetPasswordDto {
 export const authApi = {
   // Authentication endpoints
   login: async (loginDto: LoginDto): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth/login', loginDto);
+    const response = await apiService.post('/auth/login', loginDto);
     const authData = response.data as AuthResponse;
     
     // Cache user profile after successful login
-    if (authData.success && authData.data.user) {
-      cache.set(cacheKeys.profile(authData.data.user._id), authData.data.user, 10 * 60 * 1000); // 10 min
+    if (authData.id) {
+      cache.set(cacheKeys.profile(authData.id), authData, 10 * 60 * 1000); // 10 min
     }
     
     return authData;
   },
 
   register: async (registerDto: RegisterDto): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth/register', registerDto);
+    const response = await apiService.post('/auth/register', registerDto);
     return response.data as AuthResponse;
   },
 
   refreshToken: async (refreshTokenDto: RefreshTokenDto): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth/refresh', refreshTokenDto);
+    const response = await apiService.post('/auth/refresh-token', refreshTokenDto);
     return response.data as AuthResponse;
   },
 
-  logout: async (): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/logout');
+  logout: async (): Promise<{ message: string }> => {
+    const response = await apiService.post('/auth/logout');
     // Clear all cache on logout
     cache.clear();
-    return response.data as { success: boolean; message: string };
+    return response.data as { message: string };
   },
 
   // OTP endpoints
-  sendOtp: async (sendOtpDto: SendOtpDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/send-otp', sendOtpDto);
-    return response.data as { success: boolean; message: string };
+  sendOtp: async (sendOtpDto: SendOtpDto): Promise<{ message: string }> => {
+    const response = await apiService.post('/auth/send-otp', sendOtpDto);
+    return response.data as { message: string };
   },
 
-  verifyOtp: async (verifyOtpDto: VerifyOtpDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/verify-otp', verifyOtpDto);
-    return response.data as { success: boolean; message: string };
+  verifyOtp: async (verifyOtpDto: VerifyOtpDto): Promise<{ message: string; verified: boolean }> => {
+    const response = await apiService.post('/auth/verify-otp', verifyOtpDto);
+    return response.data as { message: string; verified: boolean };
   },
 
-  resendOtp: async (sendOtpDto: SendOtpDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/resend-otp', sendOtpDto);
-    return response.data as { success: boolean; message: string };
+  resendOtp: async (sendOtpDto: SendOtpDto): Promise<{ message: string }> => {
+    const response = await apiService.post('/auth/resend-otp', sendOtpDto);
+    return response.data as { message: string };
   },
 
   // Password reset
-  forgotPassword: async (forgotPasswordDto: ForgotPasswordDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/forgot-password', forgotPasswordDto);
-    return response.data as { success: boolean; message: string };
+  forgotPassword: async (forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> => {
+    const response = await apiService.post('/auth/forgot-password', forgotPasswordDto);
+    return response.data as { message: string };
   },
 
-  resetPassword: async (resetPasswordDto: ResetPasswordDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post('/auth/reset-password', resetPasswordDto);
-    return response.data as { success: boolean; message: string };
+  resetPassword: async (resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> => {
+    const response = await apiService.post('/auth/reset-password', resetPasswordDto);
+    return response.data as { message: string };
   },
 
   // Google Auth
-  googleAuth: async (): Promise<{ url: string }> => {
-    const response = await apiClient.get('/auth/google');
-    return response.data as { url: string };
+  googleAuth: (): void => {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    window.location.href = `${backendUrl}/auth/google`;
+  },
+
+  googleLoginDirect: async (googleUser: any): Promise<AuthResponse> => {
+    const response = await apiService.post('/auth/google/login', googleUser);
+    return response.data as AuthResponse;
   },
 
   // Profile
-  getProfile: async (): Promise<any> => {
-    const response = await apiClient.get('/auth/profile');
-    const profileData = response.data as any;
+  getProfile: async (): Promise<AuthResponse> => {
+    const response = await apiService.get('/auth/me');
+    const profileData = response.data as AuthResponse;
     
     // Cache the profile data
-    if (profileData?.data?._id) {
-      cache.set(cacheKeys.profile(profileData.data._id), profileData.data, 10 * 60 * 1000); // 10 min
+    if (profileData?.id) {
+      cache.set(cacheKeys.profile(profileData.id), profileData, 10 * 60 * 1000); // 10 min
     }
     
     return profileData;
   },
 
   // Check auth status
-  checkAuth: async (): Promise<{ isAuthenticated: boolean; user?: any }> => {
+  checkAuth: async (): Promise<{ isAuthenticated: boolean; user?: AuthResponse }> => {
     try {
-      const response = await apiClient.get('/auth/profile');
-      const responseData = response.data as any;
+      const response = await apiService.get('/auth/me');
+      const responseData = response.data as AuthResponse;
       
       // Cache user data if authenticated
-      if (responseData?.data?._id) {
-        cache.set(cacheKeys.profile(responseData.data._id), responseData.data, 10 * 60 * 1000);
+      if (responseData?.id) {
+        cache.set(cacheKeys.profile(responseData.id), responseData, 10 * 60 * 1000);
       }
       
-      return { isAuthenticated: true, user: responseData.data };
+      return { isAuthenticated: true, user: responseData };
     } catch (error) {
       return { isAuthenticated: false };
     }
