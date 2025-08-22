@@ -16,7 +16,32 @@ const nextConfig: NextConfig = {
   
   // Image optimization
   images: {
-    domains: ["img.freepik.com", 'localhost', 'api.freelancehub.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.freepik.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.freelancehub.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60 * 60 * 24 * 7, // 1 week
   },
