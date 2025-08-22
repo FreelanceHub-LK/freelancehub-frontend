@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -10,12 +10,16 @@ import {
   Plus, 
   X, 
   ArrowRight,
-  CheckCircle 
+  CheckCircle,
+  Shield,
+  Fingerprint,
+  Rocket
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
-import { apiService } from "@/lib/api/axios-instance";
 import { freelancerApi } from "@/lib/api/freelancerApi";
+import { skillsApi, Skill } from "@/lib/api/skills";
+import { PasskeySetup } from "@/components/auth/PasskeySetup";
 import { toast } from "@/context/toast-context";
 
 interface FreelancerProfileData {
@@ -46,6 +50,11 @@ export default function FreelancerSetupPage() {
   const [skillInput, setSkillInput] = useState("");
   const [certificationInput, setCertificationInput] = useState("");
   const [portfolioInput, setPortfolioInput] = useState("");
+  
+  // Backend data states
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
+  const [skillSearchResults, setSkillSearchResults] = useState<Skill[]>([]);
 
   const [profileData, setProfileData] = useState<FreelancerProfileData>({
     skills: [],
@@ -56,7 +65,53 @@ export default function FreelancerSetupPage() {
     portfolioLinks: [],
   });
 
-  const totalSteps = 4;
+  const totalSteps = 6; // Updated to include completion step
+
+  // Load popular skills from backend on component mount
+  useEffect(() => {
+    const loadSkills = async () => {
+      setSkillsLoading(true);
+      try {
+        const popularSkills = await skillsApi.getPopularSkills(50); // Get top 50 popular skills
+        setAvailableSkills(popularSkills);
+      } catch (error) {
+        console.error("Failed to load skills:", error);
+        // Fallback to predefined skills if API fails
+        const fallbackSkills: Skill[] = PREDEFINED_SKILLS.map((skill, index) => ({
+          _id: `fallback-${index}`,
+          name: skill,
+          popularity: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
+        setAvailableSkills(fallbackSkills);
+      } finally {
+        setSkillsLoading(false);
+      }
+    };
+
+    loadSkills();
+  }, []);
+
+  // Search skills when user types
+  useEffect(() => {
+    const searchSkills = async () => {
+      if (skillInput.trim().length > 2) {
+        try {
+          const results = await skillsApi.searchSkills(skillInput.trim());
+          setSkillSearchResults(results);
+        } catch (error) {
+          console.error("Failed to search skills:", error);
+          setSkillSearchResults([]);
+        }
+      } else {
+        setSkillSearchResults([]);
+      }
+    };
+
+    const timeoutId = setTimeout(searchSkills, 300); // Debounce search
+    return () => clearTimeout(timeoutId);
+  }, [skillInput]);
 
   const handleSkillAdd = (skill: string) => {
     const trimmedSkill = skill.trim();
@@ -67,6 +122,19 @@ export default function FreelancerSetupPage() {
       }));
     }
     setSkillInput("");
+    setSkillSearchResults([]);
+  };
+
+  const handleCustomSkillAdd = () => {
+    const trimmedSkill = skillInput.trim();
+    if (trimmedSkill && !profileData.skills.includes(trimmedSkill)) {
+      setProfileData(prev => ({
+        ...prev,
+        skills: [...prev.skills, trimmedSkill]
+      }));
+      setSkillInput("");
+      setSkillSearchResults([]);
+    }
   };
 
   const handleSkillRemove = (skillToRemove: string) => {
@@ -141,7 +209,9 @@ export default function FreelancerSetupPage() {
       await freelancerApi.create(freelancerData);
       
       toast.success("Your freelancer profile has been created successfully!");
-      router.push("/dashboard");
+      
+      // Navigate to completion screen
+      setCurrentStep(6); // New completion step
     } catch (error: any) {
       console.error("Profile creation error:", error);
       
@@ -186,16 +256,16 @@ export default function FreelancerSetupPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">
-              Step {currentStep} of {totalSteps}
+              Step {Math.min(currentStep, 5)} of 5
             </span>
             <span className="text-sm text-gray-500">
-              {Math.round((currentStep / totalSteps) * 100)}% Complete
+              {Math.round((Math.min(currentStep, 5) / 5) * 100)}% Complete
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-green-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+              style={{ width: `${(Math.min(currentStep, 5) / 5) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -228,43 +298,80 @@ export default function FreelancerSetupPage() {
                   Add Skills
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={skillInput}
-                    onChange={(e) => setSkillInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSkillAdd(skillInput)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Type a skill and press Enter"
-                  />
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={skillInput}
+                      onChange={(e) => setSkillInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleCustomSkillAdd()}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Type a skill (e.g., JavaScript, Python, UI Design)"
+                    />
+                    
+                    {/* Search Results Dropdown */}
+                    {skillInput.trim().length > 2 && skillSearchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {skillSearchResults.map((skill) => (
+                          <button
+                            key={skill._id}
+                            onClick={() => handleSkillAdd(skill.name)}
+                            disabled={profileData.skills.includes(skill.name)}
+                            className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
+                              profileData.skills.includes(skill.name)
+                                ? "text-gray-400 cursor-not-allowed"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span>{skill.name}</span>
+                              {skill.category && (
+                                <span className="text-xs text-gray-500">{skill.category}</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     type="button"
-                    onClick={() => handleSkillAdd(skillInput)}
+                    onClick={handleCustomSkillAdd}
                     disabled={!skillInput.trim()}
                     className="px-4 py-2"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Start typing to search existing skills or add your own custom skill
+                </p>
               </div>
 
-              {/* Predefined Skills */}
+              {/* Popular Skills from Backend */}
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Popular Skills:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Popular Skills:
+                  {skillsLoading && <span className="text-xs text-gray-500 ml-2">Loading...</span>}
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {PREDEFINED_SKILLS.slice(0, 15).map((skill) => (
+                  {availableSkills.slice(0, 20).map((skill) => (
                     <button
-                      key={skill}
-                      onClick={() => handleSkillAdd(skill)}
-                      disabled={profileData.skills.includes(skill)}
-                      className={`px-3 py-1 text-sm rounded-full border ${
-                        profileData.skills.includes(skill)
+                      key={skill._id}
+                      onClick={() => handleSkillAdd(skill.name)}
+                      disabled={profileData.skills.includes(skill.name)}
+                      className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                        profileData.skills.includes(skill.name)
                           ? "bg-green-100 border-green-300 text-green-700 cursor-not-allowed"
-                          : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+                          : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
                       }`}
                     >
-                      {skill}
+                      {skill.name}
                     </button>
                   ))}
+                  
+                  {!skillsLoading && availableSkills.length === 0 && (
+                    <p className="text-sm text-gray-500">No skills available. You can add custom skills above.</p>
+                  )}
                 </div>
               </div>
 
@@ -495,86 +602,133 @@ export default function FreelancerSetupPage() {
                   </label>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Profile Summary */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Profile Summary</h4>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-600">Skills:</span> {profileData.skills.join(", ") || "None added"}
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Hourly Rate:</span> ${profileData.hourlyRate || "Not set"}
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Certifications:</span> {profileData.certifications.length || "None"}
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Portfolio Links:</span> {profileData.portfolioLinks.length || "None"}
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Status:</span>{" "}
-                    <span className={profileData.isAvailable ? "text-green-600" : "text-gray-600"}>
-                      {profileData.isAvailable ? "Available" : "Not Available"}
-                    </span>
-                  </div>
+          {/* Step 5: Security Setup (Passkey) */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Secure Your Account</h3>
+                  <p className="text-gray-600">Add an extra layer of security with passkeys (optional)</p>
                 </div>
               </div>
+
+              <PasskeySetup
+                onSetupPasskey={async (deviceName: string) => {
+                  // The PasskeySetup component handles the passkey creation
+                  toast.success("Passkey setup completed successfully!");
+                  // Move to next step after successful passkey setup
+                  setTimeout(() => {
+                    handleNext();
+                  }, 1500);
+                }}
+                onSkip={() => {
+                  // Skip passkey setup and go to next step
+                  handleNext();
+                }}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* Step 6: Completion */}
+          {currentStep === 6 && (
+            <div className="space-y-6 text-center">
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Rocket className="w-8 h-8 text-green-600" />
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold text-gray-900">🎉 All Set Up!</h3>
+                <p className="text-lg text-gray-600">
+                  Your freelancer profile has been created successfully!
+                </p>
+                <p className="text-gray-500">
+                  You're ready to start finding amazing projects and connecting with clients.
+                </p>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left">
+                <h4 className="font-semibold text-green-800 mb-2">What's Next?</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• Browse and apply to projects that match your skills</li>
+                  <li>• Complete your profile with a professional photo</li>
+                  <li>• Add portfolio samples to showcase your work</li>
+                  <li>• Start building your reputation on FreelanceHub</li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={() => router.push("/dashboard")}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
+              >
+                <Rocket className="w-5 h-5 mr-2" />
+                Go to Dashboard
+              </Button>
             </div>
           )}
         </motion.div>
 
-        {/* Navigation */}
-        <div className="flex justify-between items-center">
-          <div>
-            {currentStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={isLoading}
-              >
-                Back
-              </Button>
-            )}
-          </div>
+        {/* Navigation - Only show if not on completion step */}
+        {currentStep !== 6 && (
+          <div className="flex justify-between items-center">
+            <div>
+              {currentStep > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={isLoading}
+                >
+                  Back
+                </Button>
+              )}
+            </div>
 
-          <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              onClick={handleSkipToLater}
-              disabled={isLoading}
-              className="text-gray-600"
-            >
-              Skip for now
-            </Button>
-
-            {currentStep < totalSteps ? (
+            <div className="flex gap-3">
               <Button
-                onClick={handleNext}
-                disabled={
-                  (currentStep === 1 && !canProceedStep1) ||
-                  (currentStep === 2 && !canProceedStep2) ||
-                  (currentStep === 3 && !canProceedStep3) ||
-                  isLoading
-                }
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Next
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSubmit}
-                isLoading={isLoading}
+                variant="ghost"
+                onClick={handleSkipToLater}
                 disabled={isLoading}
-                className="bg-green-600 hover:bg-green-700"
+                className="text-gray-600"
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Complete Profile
+                Skip for now
               </Button>
-            )}
+
+              {currentStep < totalSteps ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={
+                    (currentStep === 1 && !canProceedStep1) ||
+                    (currentStep === 2 && !canProceedStep2) ||
+                    (currentStep === 3 && !canProceedStep3) ||
+                    isLoading
+                  }
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  isLoading={isLoading}
+                  disabled={isLoading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Complete Profile
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

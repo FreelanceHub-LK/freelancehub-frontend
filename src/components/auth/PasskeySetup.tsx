@@ -51,6 +51,11 @@ export function PasskeySetup({
       await passkeyApi.completeRegistration(credential, deviceName.trim());
       
       setStep('success');
+      
+      // Call the onSetupPasskey callback
+      if (onSetupPasskey) {
+        await onSetupPasskey(deviceName.trim());
+      }
     } catch (error: any) {
       console.error('Passkey setup error:', error);
       setSetupError(error.message || 'Failed to setup passkey. Please try again.');
