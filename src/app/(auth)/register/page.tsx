@@ -170,6 +170,8 @@ function RegisterPageContent() {
         // Redirect based on role and profile completion
         if (formData.role === "freelancer") {
           router.push("/freelancer/onboarding");
+        } else if (formData.role === "client") {
+          router.push("/client/onboarding");
         } else {
           router.push("/dashboard");
         }

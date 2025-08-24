@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
   User, 
@@ -18,11 +19,15 @@ import {
   Eye,
   MessageSquare,
   Award,
-  Clock
+  Clock,
+  Shield,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { useAuth } from "@/hooks/useAuth";
 import { freelancerApi } from "@/lib/api/freelancerApi";
+import { passkeyApi } from "@/lib/api/registration";
 import { toast } from "@/context/toast-context";
 
 interface DashboardStats {
@@ -53,7 +58,7 @@ interface Notification {
   read: boolean;
 }
 
-export default function FreelancerDashboard() {
+export default function Dashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth({ required: true });
 
@@ -71,6 +76,8 @@ export default function FreelancerDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+  const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
+  const [showPasskeyAlert, setShowPasskeyAlert] = useState(true);
 
   // Load dashboard data
   useEffect(() => {
@@ -79,20 +86,33 @@ export default function FreelancerDashboard() {
       
       setIsLoading(true);
       try {
-        // Load freelancer profile
-        const profile = await freelancerApi.getMyProfile();
-        setProfileData(profile);
+        // Check for passkeys if user is a client
+        if (user.role === 'client') {
+          try {
+            const userPasskeys = await passkeyApi.getUserPasskeys();
+            setHasPasskeys(userPasskeys.length > 0);
+          } catch (error) {
+            console.error('Error checking passkeys:', error);
+            setHasPasskeys(null);
+          }
+        }
 
-        // TODO: Replace with real API calls
+        // Load freelancer profile if user is a freelancer
+        if (user.role === 'freelancer') {
+          const profile = await freelancerApi.getMyProfile();
+          setProfileData(profile);
+        }
+
+        // TODO: Replace with real API calls based on user role
         // Mock data for now - replace with actual API endpoints
         setStats({
-          totalProjects: 12,
-          activeProjects: 3,
-          completedProjects: 9,
-          totalEarnings: 15750,
-          monthlyEarnings: 2850,
+          totalProjects: user.role === 'freelancer' ? 12 : 5,
+          activeProjects: user.role === 'freelancer' ? 3 : 2,
+          completedProjects: user.role === 'freelancer' ? 9 : 3,
+          totalEarnings: user.role === 'freelancer' ? 15750 : 8500,
+          monthlyEarnings: user.role === 'freelancer' ? 2850 : 1200,
           rating: 4.8,
-          reviewCount: 24
+          reviewCount: user.role === 'freelancer' ? 24 : 8
         });
 
         setRecentProjects([
@@ -226,13 +246,58 @@ export default function FreelancerDashboard() {
             className="bg-gradient-to-r from-green-500 to-blue-600 rounded-lg p-6 text-white"
           >
             <h2 className="text-2xl font-bold mb-2">
-              Welcome back, {user?.name || user?.email?.split('@')[0] || 'Freelancer'}! 👋
+              Welcome back, {user?.name || user?.email?.split('@')[0] || 'User'}! 👋
             </h2>
             <p className="text-green-100">
               You have {stats.activeProjects} active projects and {notifications.filter(n => !n.read).length} new notifications
             </p>
           </motion.div>
         </div>
+
+        {/* Security Alert for Clients without Passkeys */}
+        {user?.role === 'client' && hasPasskeys === false && showPasskeyAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Alert className="bg-blue-50 border-blue-200">
+              <div className="flex items-start justify-between">
+                <div className="flex">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-1">
+                      Secure your account with a passkey
+                    </h4>
+                    <p className="text-blue-700 text-sm mb-3">
+                      Set up a passkey for faster, more secure sign-ins using your fingerprint, face, or device PIN.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Link href="/settings/security">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Set Up Passkey
+                        </Button>
+                      </Link>
+                      <button
+                        onClick={() => setShowPasskeyAlert(false)}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Maybe later
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPasskeyAlert(false)}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </Alert>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

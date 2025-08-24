@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } else if (authResponse.role === "client") {
+        // For clients, always go to dashboard after login
+        // Onboarding is only for new registrations
         router.push("/dashboard");
       } else {
         router.push("/dashboard");
