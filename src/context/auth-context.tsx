@@ -16,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (userData: any) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -41,6 +42,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
+        
+        // Verify token is still valid by making a test request
+        try {
+          const profile = await apiService.get("/auth/me");
+          const profileData = profile.data as any;
+          
+          // Update user data if the profile has newer information
+          if (profileData && profileData.id === parsedUser.id) {
+            const updatedUser = {
+              id: profileData.id,
+              name: profileData.name,
+              email: profileData.email,
+              role: profileData.role,
+              profilePicture: profileData.profilePicture,
+            };
+            
+            // Only update if there are actual changes
+            if (JSON.stringify(updatedUser) !== JSON.stringify(parsedUser)) {
+              localStorage.setItem("user", JSON.stringify(updatedUser));
+              setUser(updatedUser);
+            }
+          }
+        } catch (profileError) {
+          // If token is invalid, clear auth data
+          console.warn("Invalid token detected, clearing auth data");
+          logout();
+        }
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
@@ -59,20 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const authResponse = response.data as any;
 
-      // Store tokens
-      localStorage.setItem("access_token", authResponse.accessToken);
-      localStorage.setItem("refresh_token", authResponse.refreshToken);
-      
-      const userData = {
-        id: authResponse.id,
-        name: authResponse.name,
-        email: authResponse.email,
-        role: authResponse.role,
-        profilePicture: authResponse.profilePicture,
-      };
-
-      localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
+      // Store tokens and user data
+      storeAuthData(authResponse);
 
       // Redirect based on role and profile completion
       if (authResponse.role === "freelancer") {
@@ -97,6 +113,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       throw error;
     }
+  };
+
+  const register = async (authResponse: any) => {
+    try {
+      // Store tokens and user data after successful registration
+      storeAuthData(authResponse);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const storeAuthData = (authResponse: any) => {
+    // Clear any existing auth data first to ensure clean override
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+
+    // Store new tokens
+    localStorage.setItem("access_token", authResponse.accessToken);
+    if (authResponse.refreshToken) {
+      localStorage.setItem("refresh_token", authResponse.refreshToken);
+    }
+    
+    const userData = {
+      id: authResponse.id,
+      name: authResponse.name,
+      email: authResponse.email,
+      role: authResponse.role,
+      profilePicture: authResponse.profilePicture,
+    };
+
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
   };
 
   const logout = () => {
@@ -124,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isAuthenticated,
     login,
+    register,
     logout,
     refreshUser,
   };

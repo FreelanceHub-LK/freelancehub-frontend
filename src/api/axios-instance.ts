@@ -9,7 +9,7 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
   // Performance optimizations
-  withCredentials: false, // Don't send cookies unless needed
+  withCredentials: true, // Enable credentials for session support (needed for passkey)
   validateStatus: (status) => status < 500, // Only reject 5xx errors
 });
 

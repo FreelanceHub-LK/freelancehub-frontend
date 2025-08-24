@@ -70,6 +70,15 @@ export const freelancerApi = {
     return response.data as FreelancerProfile;
   },
 
+  // Create freelancer profile or get existing one (safer method)
+  createOrGet: async (data: CreateFreelancerRequest): Promise<FreelancerProfile> => {
+    if (!data.userId) {
+      throw new Error('User ID is required to create a freelancer profile');
+    }
+    const response = await apiService.post("/freelancers/create-or-get", data);
+    return response.data as FreelancerProfile;
+  },
+
   // Get all freelancers with filtering and pagination
   getAll: async (params?: FreelancerQueryParams): Promise<FreelancerListResponse> => {
     const queryString = params ? new URLSearchParams(params as any).toString() : "";

@@ -264,27 +264,37 @@ const HowItWorks = () => {
                 {/* Decorative Elements */}
                 {activeStep === index && (
                   <>
-                    {[...Array(4)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute w-3 h-3 rounded-full bg-gradient-to-r ${step.color} opacity-60`}
-                        initial={{ 
-                          x: Math.random() * 300,
-                          y: Math.random() * 200,
-                          scale: 0 
-                        }}
-                        animate={{ 
-                          y: -50,
-                          scale: [0, 1, 0],
-                          opacity: [0, 0.6, 0]
-                        }}
-                        transition={{ 
-                          duration: 2,
-                          delay: i * 0.3,
-                          repeat: Infinity 
-                        }}
-                      />
-                    ))}
+                    {[...Array(4)].map((_, i) => {
+                      // Static positions to prevent hydration mismatch
+                      const positions = [
+                        { x: 150, y: 100 },
+                        { x: 250, y: 120 },
+                        { x: 180, y: 160 },
+                        { x: 220, y: 80 }
+                      ];
+                      
+                      return (
+                        <motion.div
+                          key={i}
+                          className={`absolute w-3 h-3 rounded-full bg-gradient-to-r ${step.color} opacity-60`}
+                          initial={{ 
+                            x: positions[i].x,
+                            y: positions[i].y,
+                            scale: 0 
+                          }}
+                          animate={{ 
+                            y: positions[i].y - 50,
+                            scale: [0, 1, 0],
+                            opacity: [0, 0.6, 0]
+                          }}
+                          transition={{ 
+                            duration: 2,
+                            delay: i * 0.3,
+                            repeat: Infinity 
+                          }}
+                        />
+                      );
+                    })}
                   </>
                 )}
               </motion.div>

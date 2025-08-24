@@ -196,27 +196,36 @@ const Features = () => {
               {/* Floating Particles Effect */}
               {hoveredCard === index && (
                 <>
-                  {[...Array(3)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-2 h-2 bg-green-400 rounded-full opacity-60"
-                      initial={{ 
-                        x: Math.random() * 100 + '%',
-                        y: Math.random() * 100 + '%',
-                        scale: 0 
-                      }}
-                      animate={{ 
-                        y: '-20px',
-                        scale: [0, 1, 0],
-                        opacity: [0, 1, 0]
-                      }}
-                      transition={{ 
-                        duration: 1.5,
-                        delay: i * 0.2,
-                        repeat: Infinity 
-                      }}
-                    />
-                  ))}
+                  {[...Array(3)].map((_, i) => {
+                    // Static positions to prevent hydration mismatch
+                    const positions = [
+                      { x: '20%', y: '30%' },
+                      { x: '70%', y: '60%' },
+                      { x: '50%', y: '20%' }
+                    ];
+                    
+                    return (
+                      <motion.div
+                        key={i}
+                        className="absolute w-2 h-2 bg-green-400 rounded-full opacity-60"
+                        initial={{ 
+                          x: positions[i].x,
+                          y: positions[i].y,
+                          scale: 0 
+                        }}
+                        animate={{ 
+                          y: '-20px',
+                          scale: [0, 1, 0],
+                          opacity: [0, 1, 0]
+                        }}
+                        transition={{ 
+                          duration: 1.5,
+                          delay: i * 0.2,
+                          repeat: Infinity 
+                        }}
+                      />
+                    );
+                  })}
                 </>
               )}
             </motion.div>

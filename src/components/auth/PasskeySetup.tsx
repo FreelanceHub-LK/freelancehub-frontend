@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Fingerprint, Smartphone, Check, AlertCircle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Input } from '@/components/ui/Input';
 import { passkeyApi, webAuthnUtils } from '@/lib/api/registration';
+import { deviceUtils } from '@/lib/utils/device';
 
 interface PasskeySetupProps {
   onSetupPasskey: (deviceName: string) => Promise<void>;
@@ -25,10 +26,30 @@ export function PasskeySetup({
   const [deviceName, setDeviceName] = useState('');
   const [setupError, setSetupError] = useState('');
   const [isWebAuthnSupported] = useState(webAuthnUtils.isWebAuthnSupported());
+  const [autoDeviceName, setAutoDeviceName] = useState('');
+  const [useAutoName, setUseAutoName] = useState(true);
+
+  // Initialize device name automatically
+  useEffect(() => {
+    try {
+      const detectedName = deviceUtils.generateDeviceName();
+      console.log('Auto-detected device name:', detectedName);
+      setAutoDeviceName(detectedName);
+      setDeviceName(detectedName);
+    } catch (error) {
+      console.error('Error detecting device name:', error);
+      // Fallback to a generic name
+      const fallbackName = 'This Device';
+      setAutoDeviceName(fallbackName);
+      setDeviceName(fallbackName);
+    }
+  }, []);
 
   const handleSetupPasskey = async () => {
-    if (!deviceName.trim()) {
-      setSetupError('Please enter a device name');
+    const finalDeviceName = useAutoName ? autoDeviceName : deviceName;
+    
+    if (!finalDeviceName.trim()) {
+      setSetupError('Please enter a device name or use the auto-detected name');
       return;
     }
 
@@ -41,24 +62,45 @@ export function PasskeySetup({
     setStep('setup');
 
     try {
+      console.log('Initiating passkey registration for device:', finalDeviceName.trim());
+      
       // Get registration options from the server
-      const options = await passkeyApi.initiateRegistration(deviceName.trim());
+      const options = await passkeyApi.initiateRegistration(finalDeviceName.trim());
+      
+      console.log('Registration options received, creating credential...');
       
       // Create the credential using WebAuthn
       const credential = await webAuthnUtils.createCredential(options);
       
+      console.log('Credential created successfully, completing registration...');
+      
       // Complete registration on the server
-      await passkeyApi.completeRegistration(credential, deviceName.trim());
+      await passkeyApi.completeRegistration(credential, finalDeviceName.trim());
+      
+      console.log('Passkey registration completed successfully!');
       
       setStep('success');
       
       // Call the onSetupPasskey callback
       if (onSetupPasskey) {
-        await onSetupPasskey(deviceName.trim());
+        await onSetupPasskey(finalDeviceName.trim());
       }
     } catch (error: any) {
       console.error('Passkey setup error:', error);
-      setSetupError(error.message || 'Failed to setup passkey. Please try again.');
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = error.message || 'Failed to setup passkey. Please try again.';
+      
+      if (error.message?.includes('Server provided invalid data') || 
+          error.message?.includes('Invalid server data')) {
+        errorMessage = 'There was an issue with the server configuration. Please contact support or try again later.';
+      } else if (error.message?.includes('challenge')) {
+        errorMessage = 'Authentication challenge failed. Please refresh the page and try again.';
+      } else if (error.message?.includes('base64')) {
+        errorMessage = 'Data format error. Please refresh the page and try again.';
+      }
+      
+      setSetupError(errorMessage);
       setStep('intro');
     }
   };
@@ -123,13 +165,42 @@ export function PasskeySetup({
       )}
 
       <div className="space-y-4">
+        {/* Auto-detected device name option */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="useAutoName"
+              checked={useAutoName}
+              onChange={(e) => {
+                setUseAutoName(e.target.checked);
+                if (e.target.checked) {
+                  setDeviceName(autoDeviceName);
+                }
+              }}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              disabled={isLoading || !isWebAuthnSupported}
+            />
+            <label htmlFor="useAutoName" className="text-sm font-medium text-gray-700">
+              Use auto-detected device name
+            </label>
+          </div>
+          
+          {useAutoName && autoDeviceName && (
+            <div className="ml-7 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Detected device:</p>
+              <p className="font-medium text-gray-900">{autoDeviceName}</p>
+            </div>
+          )}
+        </div>
+
         <Input
           label="Device Name"
           placeholder="e.g., My Laptop, iPhone, Work Computer"
-          value={deviceName}
+          value={useAutoName ? autoDeviceName : deviceName}
           onChange={(e) => setDeviceName(e.target.value)}
-          disabled={isLoading || !isWebAuthnSupported}
-          helperText="Give this device a name so you can identify it later"
+          disabled={isLoading || !isWebAuthnSupported || useAutoName}
+          helperText={useAutoName ? "Using auto-detected device name" : "Give this device a name so you can identify it later"}
         />
 
         <div className="flex flex-col sm:flex-row gap-3">

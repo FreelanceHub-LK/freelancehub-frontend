@@ -31,14 +31,14 @@ apiClient.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 400:
-          toast.error("Bad Request: Invalid data submitted");
+          // Don't show generic toast for 400 errors, let the component handle it
           break;
         case 401:
           if (!originalRequest._retry) {
             originalRequest._retry = true;
             try {
               const refreshToken = localStorage.getItem("refresh_token");
-              const response = await axios.post("/auth/refresh", {
+              const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/auth/refresh`, {
                 refreshToken,
               });
 
@@ -51,6 +51,7 @@ apiClient.interceptors.response.use(
               return Promise.reject(refreshError);
             }
           }
+          // Don't show generic toast for 401 errors, let the component handle it
           break;
         case 403:
           toast.error("You do not have permission to perform this action");

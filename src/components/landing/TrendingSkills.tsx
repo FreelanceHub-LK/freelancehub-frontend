@@ -77,17 +77,27 @@ export default function TrendingSkills() {
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
 
+  // Static positions for background elements to prevent hydration mismatch
+  const backgroundElements = [
+    { left: "81.7683288966725%", top: "65.01223256773801%" },
+    { left: "12.380480114489822%", top: "50.18763219221306%" },
+    { left: "34.797599077963824%", top: "66.93988593953168%" },
+    { left: "66.06696746405618%", top: "17.167982639218636%" },
+    { left: "66.58328741205828%", top: "34.35790086528995%" },
+    { left: "71.1672591233299%", top: "76.019929650167%" }
+  ];
+
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(6)].map((_, i) => (
+        {backgroundElements.map((element, i) => (
           <motion.div
             key={i}
             className="absolute w-20 h-20 bg-gradient-to-r from-green-200 to-blue-200 rounded-full opacity-10"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: element.left,
+              top: element.top,
             }}
             animate={{
               y: [0, -20, 0],
@@ -95,7 +105,7 @@ export default function TrendingSkills() {
               scale: [1, 1.1, 1],
             }}
             transition={{
-              duration: 4 + Math.random() * 2,
+              duration: 4 + (i % 3),
               repeat: Infinity,
               delay: i * 0.5,
             }}

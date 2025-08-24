@@ -9,6 +9,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { SocialAuth } from "@/components/auth/SocialAuth";
 import { OTPVerification } from "@/components/auth/OTPVerification";
 import { authApi } from "@/lib/api/auth";
+import { useAuth } from "@/context/auth-context";
 import { toast } from "@/context/toast-context";
 
 interface RegisterFormData {
@@ -33,6 +34,7 @@ interface ValidationErrors {
 function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { register } = useAuth();
   const userType = searchParams.get("type") as "freelancer" | "client" || "freelancer";
 
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -52,6 +54,7 @@ function RegisterPageContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [registrationEmail, setRegistrationEmail] = useState("");
+  const [registrationResponse, setRegistrationResponse] = useState<any>(null);
 
   useEffect(() => {
     setFormData(prev => ({ ...prev, role: userType }));
@@ -123,6 +126,9 @@ function RegisterPageContent() {
       const response = await authApi.register(registrationData);
       
       if (response) {
+        // Store the registration response for later use after OTP verification
+        setRegistrationResponse(response);
+        
         // After successful registration, send OTP
         await authApi.sendOtp({ email: formData.email });
         
@@ -155,18 +161,30 @@ function RegisterPageContent() {
     }
   };
 
-  const handleOTPSuccess = () => {
-    // Redirect to dashboard or freelancer setup based on role
-    if (formData.role === "freelancer") {
-      router.push("/freelancer/setup");
-    } else {
-      router.push("/dashboard");
+  const handleOTPSuccess = async () => {
+    try {
+      // Store authentication data in localStorage and update auth context
+      if (registrationResponse) {
+        await register(registrationResponse);
+        
+        // Redirect based on role and profile completion
+        if (formData.role === "freelancer") {
+          router.push("/freelancer/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
+      }
+    } catch (error) {
+      console.error("Error storing auth data after OTP verification:", error);
+      toast.error("Authentication failed. Please try logging in.");
+      router.push("/login");
     }
   };
 
   const handleBackToForm = () => {
     setShowOTPVerification(false);
     setRegistrationEmail("");
+    setRegistrationResponse(null);
   };
 
   const handleOTPVerify = async (otp: string) => {
@@ -177,12 +195,9 @@ function RegisterPageContent() {
         otp 
       });
       
-      if (response.verified) {
-        toast.success("Email verified successfully!");
-        handleOTPSuccess();
-      } else {
-        toast.error("Invalid OTP. Please try again.");
-      }
+      // If we reach here, OTP verification was successful (no error thrown)
+      toast.success("Email verified successfully!");
+      handleOTPSuccess();
     } catch (error: any) {
       console.error("OTP verification error:", error);
       if (error.response?.data?.message) {

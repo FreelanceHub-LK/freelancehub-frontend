@@ -206,7 +206,7 @@ export default function FreelancerSetupPage() {
         ...profileData,
       };
 
-      await freelancerApi.create(freelancerData);
+      await freelancerApi.createOrGet(freelancerData);
       
       toast.success("Your freelancer profile has been created successfully!");
       

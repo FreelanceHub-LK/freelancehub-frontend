@@ -87,9 +87,9 @@ export const authApi = {
     return response.data as { message: string };
   },
 
-  verifyOtp: async (verifyOtpDto: VerifyOtpDto): Promise<{ message: string; verified: boolean }> => {
+  verifyOtp: async (verifyOtpDto: VerifyOtpDto): Promise<{ message: string }> => {
     const response = await apiService.post('/auth/verify-otp', verifyOtpDto);
-    return response.data as { message: string; verified: boolean };
+    return response.data as { message: string };
   },
 
   resendOtp: async (sendOtpDto: SendOtpDto): Promise<{ message: string }> => {

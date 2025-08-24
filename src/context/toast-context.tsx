@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useContext, createContext } from "react";
+import React, { useState, useEffect, useContext, createContext, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, AlertCircle, Info, XIcon } from "lucide-react";
 
@@ -31,17 +31,27 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = (message: string, type: ToastType = "info") => {
+  const addToast = useCallback((message: string, type: ToastType = "info") => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
+
+  const contextValue = React.useMemo(() => ({ addToast }), [addToast]);
+
+  // Set the global instance for use outside components
+  React.useEffect(() => {
+    globalToastInstance = contextValue;
+    return () => {
+      globalToastInstance = null;
+    };
+  }, [contextValue]);
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </ToastContext.Provider>
@@ -64,23 +74,38 @@ export const useToast = () => {
   };
 };
 
-// Utility toast methods (if you want to use outside of React components)
+// Global toast instance - will be set by the provider
+let globalToastInstance: ToastContextType | null = null;
+
+// Utility toast methods (safe to use outside of React components)
 export const toast = {
   success: (message: string) => {
-    const context = React.useContext(ToastContext);
-    context.addToast(message, "success");
+    if (globalToastInstance) {
+      globalToastInstance.addToast(message, "success");
+    } else {
+      console.warn("Toast not initialized. Make sure ToastProvider is rendered.");
+    }
   },
   error: (message: string) => {
-    const context = React.useContext(ToastContext);
-    context.addToast(message, "error");
+    if (globalToastInstance) {
+      globalToastInstance.addToast(message, "error");
+    } else {
+      console.warn("Toast not initialized. Make sure ToastProvider is rendered.");
+    }
   },
   warning: (message: string) => {
-    const context = React.useContext(ToastContext);
-    context.addToast(message, "warning");
+    if (globalToastInstance) {
+      globalToastInstance.addToast(message, "warning");
+    } else {
+      console.warn("Toast not initialized. Make sure ToastProvider is rendered.");
+    }
   },
   info: (message: string) => {
-    const context = React.useContext(ToastContext);
-    context.addToast(message, "info");
+    if (globalToastInstance) {
+      globalToastInstance.addToast(message, "info");
+    } else {
+      console.warn("Toast not initialized. Make sure ToastProvider is rendered.");
+    }
   },
 };
 
