@@ -25,6 +25,13 @@ export default function ClientOnboardingPage() {
       router.push('/login');
     } else if (user.role !== 'client') {
       router.push('/dashboard');
+    } else if (user.passkeyEnabled && user.passkeyCount && user.passkeyCount > 0) {
+      // Skip passkey setup if user already has passkeys configured
+      setCurrentStep('completed');
+      toast.success('Welcome to FreelanceHub! Your account is already secured with passkeys.');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
     }
   }, [user, router]);
 

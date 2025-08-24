@@ -9,6 +9,8 @@ interface User {
   email: string;
   role: "client" | "freelancer" | "admin";
   profilePicture?: string;
+  passkeyEnabled?: boolean;
+  passkeyCount?: number;
 }
 
 interface AuthContextType {
@@ -121,6 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Store tokens and user data after successful registration
       storeAuthData(authResponse);
+      
+      // Ensure the state is properly updated before proceeding
+      await new Promise(resolve => setTimeout(resolve, 0));
     } catch (error) {
       throw error;
     }
@@ -144,6 +149,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: authResponse.email,
       role: authResponse.role,
       profilePicture: authResponse.profilePicture,
+      passkeyEnabled: authResponse.passkeyEnabled,
+      passkeyCount: authResponse.passkeyCount,
     };
 
     localStorage.setItem("user", JSON.stringify(userData));

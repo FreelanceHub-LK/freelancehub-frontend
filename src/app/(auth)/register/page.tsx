@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { SocialAuth } from "@/components/auth/SocialAuth";
 import { OTPVerification } from "@/components/auth/OTPVerification";
+import { PasskeySetup } from "@/components/auth/PasskeySetup";
 import { authApi } from "@/lib/api/auth";
 import { useAuth } from "@/context/auth-context";
 import { toast } from "@/context/toast-context";
@@ -34,7 +35,7 @@ interface ValidationErrors {
 function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { register } = useAuth();
+  const { register, refreshUser } = useAuth();
   const userType = searchParams.get("type") as "freelancer" | "client" || "freelancer";
 
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -53,6 +54,7 @@ function RegisterPageContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [registrationEmail, setRegistrationEmail] = useState("");
   const [registrationResponse, setRegistrationResponse] = useState<any>(null);
 
@@ -167,11 +169,19 @@ function RegisterPageContent() {
       if (registrationResponse) {
         await register(registrationResponse);
         
-        // Redirect based on role and profile completion
+        // Give a small delay to ensure authentication state is properly set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // For clients, show passkey setup after successful OTP verification
+        if (formData.role === "client") {
+          setShowOTPVerification(false);
+          setShowPasskeySetup(true);
+          return;
+        }
+        
+        // For freelancers, redirect directly to onboarding
         if (formData.role === "freelancer") {
           router.push("/freelancer/onboarding");
-        } else if (formData.role === "client") {
-          router.push("/client/onboarding");
         } else {
           router.push("/dashboard");
         }
@@ -187,6 +197,27 @@ function RegisterPageContent() {
     setShowOTPVerification(false);
     setRegistrationEmail("");
     setRegistrationResponse(null);
+  };
+
+  const handlePasskeySetup = async (deviceName: string) => {
+    try {
+      toast.success(`Passkey "${deviceName}" set up successfully!`);
+      
+      // Refresh user data to update passkey status
+      await refreshUser();
+      
+      // Continue to client onboarding after passkey setup
+      router.push("/client/onboarding");
+    } catch (error) {
+      console.error("Error after passkey setup:", error);
+      // Still continue even if there's an error
+      router.push("/client/onboarding");
+    }
+  };
+
+  const handleSkipPasskey = () => {
+    // Continue to client onboarding without passkey
+    router.push("/client/onboarding");
   };
 
   const handleOTPVerify = async (otp: string) => {
@@ -242,6 +273,22 @@ function RegisterPageContent() {
           onResend={handleOTPResend}
           isLoading={isLoading}
           onBack={handleBackToForm}
+        />
+      </AuthLayout>
+    );
+  }
+
+  if (showPasskeySetup) {
+    return (
+      <AuthLayout 
+        layout="compact"
+        title="Secure Your Account"
+        subtitle="Set up a passkey for enhanced security (optional)"
+      >
+        <PasskeySetup
+          onSetupPasskey={handlePasskeySetup}
+          onSkip={handleSkipPasskey}
+          isLoading={isLoading}
         />
       </AuthLayout>
     );

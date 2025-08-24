@@ -103,6 +103,12 @@ export const passkeyApi = {
       console.log('Request payload:', { deviceName });
       console.log('API base URL:', apiClient.defaults.baseURL);
       
+      // Check if user is authenticated before making the request
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('You must be logged in to register a passkey');
+      }
+      
       const response = await apiClient.post('/auth/passkeys/register/initiate', { deviceName });
       console.log('Response received:', response.status, response.statusText);
       console.log('Response data:', response.data);

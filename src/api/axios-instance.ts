@@ -16,6 +16,16 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
+    
+    // Debug logging for passkey endpoints
+    if (config.url?.includes('/auth/passkeys/')) {
+      console.log('Passkey API request interceptor:');
+      console.log('- URL:', config.url);
+      console.log('- Token exists:', !!token);
+      console.log('- Token length:', token ? token.length : 0);
+      console.log('- Method:', config.method);
+    }
+    
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -41,6 +51,14 @@ apiClient.interceptors.response.use(
           toast.error(errorMessage);
           break;
         case 401:
+          // Debug logging for passkey endpoints
+          if (originalRequest.url?.includes('/auth/passkeys/')) {
+            console.log('401 error on passkey endpoint:');
+            console.log('- URL:', originalRequest.url);
+            console.log('- Response:', error.response?.data);
+            console.log('- Has retry flag:', !!originalRequest._retry);
+          }
+          
           if (!originalRequest._retry) {
             originalRequest._retry = true;
             try {

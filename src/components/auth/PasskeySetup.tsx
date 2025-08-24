@@ -6,6 +6,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Input } from '@/components/ui/Input';
 import { passkeyApi, webAuthnUtils } from '@/lib/api/registration';
 import { deviceUtils } from '@/lib/utils/device';
+import { useAuth } from '@/context/auth-context';
 
 interface PasskeySetupProps {
   onSetupPasskey: (deviceName: string) => Promise<void>;
@@ -22,6 +23,7 @@ export function PasskeySetup({
   error,
   className = ""
 }: PasskeySetupProps) {
+  const { isAuthenticated, user } = useAuth();
   const [step, setStep] = useState<'intro' | 'setup' | 'success'>('intro');
   const [deviceName, setDeviceName] = useState('');
   const [setupError, setSetupError] = useState('');
@@ -58,11 +60,26 @@ export function PasskeySetup({
       return;
     }
 
+    // Check if user is authenticated
+    const token = localStorage.getItem('access_token');
+    if (!token || !isAuthenticated) {
+      setSetupError('Authentication required. Please refresh the page and try again, or continue without setting up a passkey.');
+      return;
+    }
+
+    console.log('Authentication check:', {
+      hasToken: !!token,
+      isAuthenticated,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+
     setSetupError('');
     setStep('setup');
 
     try {
       console.log('Initiating passkey registration for device:', finalDeviceName.trim());
+      console.log('Auth token available:', !!token);
       
       // Get registration options from the server
       const options = await passkeyApi.initiateRegistration(finalDeviceName.trim());
@@ -98,6 +115,10 @@ export function PasskeySetup({
         errorMessage = 'Authentication challenge failed. Please refresh the page and try again.';
       } else if (error.message?.includes('base64')) {
         errorMessage = 'Data format error. Please refresh the page and try again.';
+      } else if (error.message?.includes('You must be logged in')) {
+        errorMessage = 'Authentication required. Please refresh the page and try again, or continue without setting up a passkey.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication required. Please refresh the page and try again, or continue without setting up a passkey.';
       }
       
       setSetupError(errorMessage);
@@ -123,6 +144,14 @@ export function PasskeySetup({
         <Alert
           variant="error"
           description="Your browser doesn't support passkeys. Please update to a modern browser to use this feature."
+        />
+      )}
+
+      {/* Authentication status indicator for debugging */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert
+          variant={isAuthenticated ? "success" : "error"}
+          description={`Authentication Status: ${isAuthenticated ? 'Authenticated' : 'Not Authenticated'} ${user?.email ? `(${user.email})` : ''}`}
         />
       )}
 
