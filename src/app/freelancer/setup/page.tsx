@@ -226,9 +226,9 @@ export default function FreelancerSetupPage() {
   };
 
   const handleSkipToLater = () => {
-    // For now, just redirect to dashboard
+    // For now, just redirect to freelancer dashboard
     // Later you can implement a way to complete the profile
-    router.push("/dashboard");
+    router.push("/freelancer/dashboard");
   };
 
   if (authLoading) {
@@ -666,7 +666,7 @@ export default function FreelancerSetupPage() {
               </div>
 
               <Button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/freelancer/dashboard")}
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
               >
                 <Rocket className="w-5 h-5 mr-2" />

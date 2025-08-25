@@ -1,88 +1,71 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, ThumbsUp, ThumbsDown, Flag, MessageCircle, Calendar, User } from "lucide-react";
-import { useFreelancerReviews } from "@/hooks/useFreelancers";
 import Button from "@/components/ui/Button";
+import { reviewApi, Review, ReviewStats } from "@/lib/api/reviews";
 
 interface FreelancerReviewsEnhancedProps {
   freelancerId: string;
 }
 
-interface Review {
-  id: string;
-  clientName: string;
-  clientAvatar?: string;
-  rating: number;
-  comment: string;
-  projectTitle: string;
-  date: string;
-  helpful: number;
-  notHelpful: number;
-  response?: {
-    content: string;
-    date: string;
-  };
-}
-
 export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps> = ({
   freelancerId
 }) => {
-  const { reviews, stats, loading } = useFreelancerReviews(freelancerId);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | '5' | '4' | '3' | '2' | '1'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest' | 'helpful'>('newest');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Mock data for demonstration
-  const mockReviews: Review[] = [
-    {
-      id: "1",
-      clientName: "Sarah Johnson",
-      clientAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
-      rating: 5,
-      comment: "Exceptional work! The freelancer delivered exactly what we needed and went above and beyond our expectations. Communication was excellent throughout the project.",
-      projectTitle: "E-commerce Website Development",
-      date: "2024-01-15",
-      helpful: 12,
-      notHelpful: 0,
-      response: {
-        content: "Thank you Sarah! It was a pleasure working with you. I'm glad the website exceeded your expectations.",
-        date: "2024-01-16"
+  // Load reviews and stats
+  useEffect(() => {
+    const loadReviews = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Load reviews for the freelancer
+        const reviewFilters = {
+          revieweeId: freelancerId,
+          reviewType: 'client_to_freelancer' as const,
+          isPublic: true,
+          page,
+          limit: 10,
+          sortBy: 'createdAt' as const,
+          sortOrder: sortBy === 'newest' ? 'desc' as const : 'asc' as const,
+          ...(filter !== 'all' && { 
+            minRating: parseInt(filter), 
+            maxRating: parseInt(filter) 
+          })
+        };
+
+        const [reviewsResponse, statsResponse] = await Promise.all([
+          reviewApi.getReviews(reviewFilters),
+          reviewApi.getUserReviewStats(freelancerId)
+        ]);
+
+        setReviews(reviewsResponse.reviews);
+        setTotalPages(reviewsResponse.totalPages);
+        
+        if (statsResponse.success) {
+          setStats(statsResponse.data);
+        }
+
+      } catch (err: any) {
+        console.error('Error loading reviews:', err);
+        setError('Failed to load reviews');
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: "2",
-      clientName: "Michael Chen",
-      clientAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-      rating: 5,
-      comment: "Outstanding developer! Delivered the mobile app on time and within budget. Very professional and responsive.",
-      projectTitle: "Mobile App Development",
-      date: "2024-01-10",
-      helpful: 8,
-      notHelpful: 1
-    },
-    {
-      id: "3",
-      clientName: "Emily Rodriguez",
-      clientAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      rating: 4,
-      comment: "Good work overall. The design was clean and modern. There were a few minor revisions needed, but the freelancer was quick to address them.",
-      projectTitle: "Logo Design & Branding",
-      date: "2024-01-05",
-      helpful: 5,
-      notHelpful: 0
-    }
-  ];
+    };
 
-  const mockStats = {
-    averageRating: 4.8,
-    totalReviews: 27,
-    ratingDistribution: {
-      5: 20,
-      4: 5,
-      3: 1,
-      2: 1,
-      1: 0
+    if (freelancerId) {
+      loadReviews();
     }
-  };
+  }, [freelancerId, filter, sortBy, page]);
 
   const renderStars = (rating: number, size = 16) => {
     return (
@@ -102,7 +85,31 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
     );
   };
 
-  const formatDate = (dateString: string) => {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="ml-3 text-gray-600">Loading reviews...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <p className="text-red-700">{error}</p>
+        <Button 
+          onClick={() => window.location.reload()} 
+          className="mt-4"
+          variant="outline"
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  const formatDate = (dateString: Date | string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -110,7 +117,7 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
     });
   };
 
-  const filteredReviews = mockReviews.filter(review => {
+  const filteredReviews = reviews.filter(review => {
     if (filter === 'all') return true;
     return review.rating === parseInt(filter);
   });
@@ -118,17 +125,15 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
   const sortedReviews = [...filteredReviews].sort((a, b) => {
     switch (sortBy) {
       case 'newest':
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       case 'oldest':
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       case 'highest':
         return b.rating - a.rating;
       case 'lowest':
         return a.rating - b.rating;
-      case 'helpful':
-        return b.helpful - a.helpful;
       default:
-        return 0;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
   });
 
@@ -160,11 +165,11 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
           {/* Overall Rating */}
           <div className="text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start mb-4">
-              <div className="text-4xl font-bold mr-4">{mockStats.averageRating}</div>
+              <div className="text-4xl font-bold mr-4">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
               <div>
-                {renderStars(mockStats.averageRating, 20)}
+                {renderStars(stats?.averageRating || 0, 20)}
                 <p className="text-gray-600 text-sm mt-1">
-                  Based on {mockStats.totalReviews} reviews
+                  Based on {stats?.totalReviews || 0} reviews
                 </p>
               </div>
             </div>
@@ -172,23 +177,27 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
 
           {/* Rating Distribution */}
           <div className="space-y-2">
-            {[5, 4, 3, 2, 1].map((rating) => (
-              <div key={rating} className="flex items-center space-x-3">
-                <span className="text-sm w-6">{rating}</span>
-                <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-yellow-400 h-2 rounded-full"
-                    style={{
-                      width: `${(mockStats.ratingDistribution[rating as keyof typeof mockStats.ratingDistribution] / mockStats.totalReviews) * 100}%`
-                    }}
-                  ></div>
+            {[5, 4, 3, 2, 1].map((rating) => {
+              const ratingData = stats?.ratingDistribution?.find(r => r.rating === rating);
+              const count = ratingData?.count || 0;
+              const percentage = (stats?.totalReviews || 0) > 0 ? (count / (stats?.totalReviews || 1)) * 100 : 0;
+              
+              return (
+                <div key={rating} className="flex items-center space-x-3">
+                  <span className="text-sm w-6">{rating}</span>
+                  <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-yellow-400 h-2 rounded-full"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm text-gray-600 w-8">
+                    {count}
+                  </span>
                 </div>
-                <span className="text-sm text-gray-600 w-8">
-                  {mockStats.ratingDistribution[rating as keyof typeof mockStats.ratingDistribution]}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -243,13 +252,13 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
           </div>
         ) : (
           sortedReviews.map((review) => (
-            <div key={review.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div key={review._id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               {/* Review Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <img
-                    src={review.clientAvatar || "/api/placeholder/48/48"}
-                    alt={review.clientName}
+                    src={review.reviewer?.profilePicture || "/api/placeholder/48/48"}
+                    alt={`${review.reviewer?.firstName} ${review.reviewer?.lastName}`}
                     className="w-12 h-12 rounded-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -257,11 +266,13 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
                     }}
                   />
                   <div>
-                    <h4 className="font-semibold text-gray-900">{review.clientName}</h4>
+                    <h4 className="font-semibold text-gray-900">
+                      {review.reviewer?.firstName} {review.reviewer?.lastName}
+                    </h4>
                     <div className="flex items-center space-x-2">
                       {renderStars(review.rating)}
                       <span className="text-sm text-gray-600">
-                        {formatDate(review.date)}
+                        {formatDate(review.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -273,42 +284,19 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
               </div>
 
               {/* Project Title */}
-              <div className="bg-blue-50 px-3 py-1 rounded-full inline-block mb-3">
-                <span className="text-sm text-blue-800 font-medium">{review.projectTitle}</span>
-              </div>
+              {review.project && (
+                <div className="bg-blue-50 px-3 py-1 rounded-full inline-block mb-3">
+                  <span className="text-sm text-blue-800 font-medium">{review.project.title}</span>
+                </div>
+              )}
 
               {/* Review Content */}
               <p className="text-gray-700 leading-relaxed mb-4">{review.comment}</p>
 
-              {/* Freelancer Response */}
-              {review.response && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4 border-l-4 border-blue-500">
-                  <div className="flex items-center mb-2">
-                    <User size={16} className="text-blue-600 mr-2" />
-                    <span className="text-sm font-medium text-blue-600">Response from freelancer</span>
-                    <span className="text-xs text-gray-500 ml-auto">
-                      {formatDate(review.response.date)}
-                    </span>
-                  </div>
-                  <p className="text-gray-700 text-sm">{review.response.content}</p>
-                </div>
-              )}
-
-              {/* Review Actions */}
+              {/* Review Date */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center space-x-4">
-                  <button className="flex items-center space-x-1 text-sm text-gray-600 hover:text-green-600">
-                    <ThumbsUp size={14} />
-                    <span>Helpful ({review.helpful})</span>
-                  </button>
-                  <button className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600">
-                    <ThumbsDown size={14} />
-                    <span>Not helpful ({review.notHelpful})</span>
-                  </button>
-                </div>
-                
                 <span className="text-xs text-gray-500">
-                  Was this review helpful?
+                  Review posted on {formatDate(review.createdAt)}
                 </span>
               </div>
             </div>
@@ -319,8 +307,35 @@ export const FreelancerReviewsEnhanced: React.FC<FreelancerReviewsEnhancedProps>
       {/* Load More Button */}
       {sortedReviews.length > 0 && sortedReviews.length >= 10 && (
         <div className="text-center">
-          <Button variant="outline">
+          <Button 
+            onClick={() => setPage(prev => prev + 1)}
+            disabled={page >= totalPages}
+            variant="outline"
+          >
             Load More Reviews
+          </Button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-4 mt-8">
+          <Button
+            onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+            disabled={page === 1}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={page === totalPages}
+            variant="outline"
+          >
+            Next
           </Button>
         </div>
       )}

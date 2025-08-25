@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   User, 
   Camera, 
@@ -18,6 +18,9 @@ import {
   Upload
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { freelancerApi, FreelancerProfile, UpdateFreelancerRequest } from "@/lib/api/freelancerApi";
+import { useAuth } from "@/hooks/useAuth";
+import { fileUploadApi } from "@/lib/api/file-upload";
 
 interface FreelancerProfileSettingsProps {
   userId: string;
@@ -47,40 +50,121 @@ interface Certification {
 export const FreelancerProfileSettings: React.FC<FreelancerProfileSettingsProps> = ({
   userId
 }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'basic' | 'professional' | 'portfolio' | 'rates'>('basic');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [freelancerProfile, setFreelancerProfile] = useState<FreelancerProfile | null>(null);
+  
   const [profileData, setProfileData] = useState({
     // Basic Info
-    firstName: 'John',
-    lastName: 'Doe',
-    title: 'Full Stack Developer',
-    bio: 'Experienced developer with 5+ years in web development...',
-    location: 'New York, USA',
+    firstName: '',
+    lastName: '',
+    title: '',
+    bio: '',
+    location: '',
     timezone: 'UTC-5',
-    languages: ['English (Native)', 'Spanish (Fluent)'],
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    languages: ['English (Native)'],
+    avatar: '',
     
     // Professional Info
-    experience: '5+ years',
-    hourlyRate: 50,
+    experience: '1-2 years',
+    hourlyRate: 25,
     availability: 'full-time' as 'full-time' | 'part-time' | 'not-available',
-    skills: [
-      { id: '1', name: 'React', level: 'expert' as const },
-      { id: '2', name: 'Node.js', level: 'expert' as const },
-      { id: '3', name: 'TypeScript', level: 'intermediate' as const }
-    ] as Skill[],
-    education: [
-      { id: '1', degree: 'B.S. Computer Science', institution: 'MIT', year: '2018' }
-    ] as Education[],
-    certifications: [
-      { id: '1', name: 'AWS Certified Developer', issuer: 'Amazon', date: '2023', credentialUrl: 'https://aws.amazon.com/certification/' }
-    ] as Certification[],
+    skills: [] as Skill[],
+    education: [] as Education[],
+    certifications: [] as Certification[],
     
     // Settings
     profileVisibility: 'public' as 'public' | 'private',
     emailNotifications: true,
-    profileCompleteness: 85
+    profileCompleteness: 0
   });
+
+  // Load freelancer profile on component mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setIsLoadingProfile(true);
+        const profile = await freelancerApi.getMyProfile();
+        setFreelancerProfile(profile);
+        
+        // Update form data with profile data
+        setProfileData(prev => ({
+          ...prev,
+          title: profile.title || '',
+          bio: profile.bio || '',
+          hourlyRate: profile.hourlyRate || 25,
+          availability: profile.isAvailable ? 'full-time' : 'not-available',
+          skills: profile.skills.map((skill, index) => ({
+            id: index.toString(),
+            name: skill,
+            level: 'intermediate' as const
+          })),
+          education: profile.education ? [{
+            id: '1',
+            degree: profile.education,
+            institution: '',
+            year: ''
+          }] : [],
+          certifications: profile.certifications.map((cert, index) => ({
+            id: index.toString(),
+            name: cert,
+            issuer: '',
+            date: '',
+            credentialUrl: ''
+          })),
+          // Calculate completeness
+          profileCompleteness: calculateProfileCompleteness(profile)
+        }));
+
+        if (profile.user) {
+          setProfileData(prev => ({
+            ...prev,
+            firstName: profile.user?.firstName || '',
+            lastName: profile.user?.lastName || '',
+            avatar: profile.user?.profilePicture || '',
+            location: profile.user?.address || ''
+          }));
+        }
+        
+      } catch (err: any) {
+        console.error('Error loading profile:', err);
+        if (err.response?.status === 404) {
+          // Profile doesn't exist, this is okay for new freelancers
+          setError('No freelancer profile found. You can create one by filling out this form.');
+        } else {
+          setError('Failed to load profile data');
+        }
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const calculateProfileCompleteness = (profile: FreelancerProfile): number => {
+    let completed = 0;
+    const total = 10;
+
+    if (profile.title) completed++;
+    if (profile.bio) completed++;
+    if (profile.hourlyRate) completed++;
+    if (profile.skills.length > 0) completed++;
+    if (profile.education) completed++;
+    if (profile.certifications.length > 0) completed++;
+    if (profile.portfolioLinks.length > 0) completed++;
+    if (profile.user?.firstName) completed++;
+    if (profile.user?.lastName) completed++;
+    if (profile.user?.profilePicture) completed++;
+
+    return Math.round((completed / total) * 100);
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
@@ -143,9 +227,59 @@ export const FreelancerProfileSettings: React.FC<FreelancerProfileSettingsProps>
 
   const handleSave = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      if (!user) {
+        throw new Error('You must be logged in to update your profile');
+      }
+
+      // Prepare freelancer data
+      const freelancerData: UpdateFreelancerRequest = {
+        title: profileData.title,
+        bio: profileData.bio,
+        hourlyRate: profileData.hourlyRate,
+        isAvailable: profileData.availability !== 'not-available',
+        skills: profileData.skills.map(skill => skill.name),
+        education: profileData.education.length > 0 ? profileData.education[0].degree : undefined,
+        certifications: profileData.certifications.map(cert => cert.name),
+        portfolioLinks: [] // This could be extended to include portfolio links
+      };
+
+      if (freelancerProfile) {
+        // Update existing profile
+        const updatedProfile = await freelancerApi.updateMyProfile(freelancerData);
+        setFreelancerProfile(updatedProfile);
+        
+        // Recalculate completeness
+        setProfileData(prev => ({
+          ...prev,
+          profileCompleteness: calculateProfileCompleteness(updatedProfile)
+        }));
+      } else {
+        // Create new profile
+        const newProfile = await freelancerApi.createOrGet(freelancerData);
+        setFreelancerProfile(newProfile);
+        
+        // Recalculate completeness
+        setProfileData(prev => ({
+          ...prev,
+          profileCompleteness: calculateProfileCompleteness(newProfile)
+        }));
+      }
+
+      setSuccess('Profile updated successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+      
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const SkillLevelBadge = ({ level }: { level: string }) => {
@@ -189,9 +323,41 @@ export const FreelancerProfileSettings: React.FC<FreelancerProfileSettingsProps>
         <p className="text-gray-600">Manage your freelancer profile and preferences</p>
       </div>
 
-      <ProfileCompleteness />
+      {/* Loading State */}
+      {isLoadingProfile && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-3 text-gray-600">Loading profile...</span>
+        </div>
+      )}
 
-      {/* Tab Navigation */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <X size={16} className="text-red-600" />
+            <span className="text-red-800 font-medium">Error</span>
+          </div>
+          <p className="text-red-700 text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <Save size={16} className="text-green-600" />
+            <span className="text-green-800 font-medium">Success</span>
+          </div>
+          <p className="text-green-700 text-sm mt-1">{success}</p>
+        </div>
+      )}
+
+      {!isLoadingProfile && (
+        <>
+          <ProfileCompleteness />
+
+          {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-8">
         <nav className="-mb-px flex space-x-8">
           {[
@@ -553,6 +719,8 @@ export const FreelancerProfileSettings: React.FC<FreelancerProfileSettingsProps>
           </Button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

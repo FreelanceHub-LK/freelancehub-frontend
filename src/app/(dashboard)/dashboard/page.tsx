@@ -84,6 +84,12 @@ export default function Dashboard() {
     const loadDashboardData = async () => {
       if (!user) return;
       
+      // Redirect freelancers to their specific dashboard
+      if (user.role === 'freelancer') {
+        router.push('/freelancer/dashboard');
+        return;
+      }
+      
       setIsLoading(true);
       try {
         // Check for passkeys if user is a client

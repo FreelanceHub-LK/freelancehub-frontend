@@ -15,6 +15,10 @@ import {
   CheckCircle
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { messageApi, SendMessageDto } from "@/lib/api/messages";
+import { contractApi, CreateContractDto } from "@/lib/api/contracts";
+import { fileUploadApi } from "@/lib/api/file-upload";
+import { useAuth } from "@/hooks/useAuth";
 
 interface HireFreelancerModalProps {
   isOpen: boolean;
@@ -39,6 +43,7 @@ export const HireFreelancerModal: React.FC<HireFreelancerModalProps> = ({
   onClose,
   freelancer
 }) => {
+  const { user } = useAuth();
   const [contactType, setContactType] = useState<ContactType>('message');
   const [projectType, setProjectType] = useState<ProjectType>('hourly');
   const [formData, setFormData] = useState({
@@ -54,6 +59,7 @@ export const HireFreelancerModal: React.FC<HireFreelancerModalProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -76,12 +82,114 @@ export const HireFreelancerModal: React.FC<HireFreelancerModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
-    setSubmitted(true);
+    setError(null);
+
+    try {
+      if (!user) {
+        throw new Error('You must be logged in to perform this action');
+      }
+
+      if (contactType === 'message') {
+        // Upload attachments first if any
+        let attachmentUrls: any[] = [];
+        if (formData.attachments.length > 0) {
+          for (const file of formData.attachments) {
+            const uploadResult = await fileUploadApi.uploadSingle(file, 'messages');
+            attachmentUrls.push({
+              fileName: file.name,
+              fileUrl: uploadResult.data.url,
+              fileType: file.type,
+              fileSize: file.size
+            });
+          }
+        }
+
+        // Send message
+        const messageData: SendMessageDto = {
+          receiverId: freelancer.id,
+          content: `Subject: ${formData.subject}\n\n${formData.message}`,
+          messageType: 'text',
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined
+        };
+
+        await messageApi.sendMessage(messageData);
+      } else {
+        // Create contract for hire request
+        // First, we need to create a project (this would ideally be handled by a project creation flow)
+        // For now, we'll create a simplified contract request
+        
+        // Calculate expected end date based on duration
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(startDate);
+        
+        switch (formData.duration) {
+          case '1-7 days':
+            endDate.setDate(endDate.getDate() + 7);
+            break;
+          case '1-2 weeks':
+            endDate.setDate(endDate.getDate() + 14);
+            break;
+          case '1 month':
+            endDate.setMonth(endDate.getMonth() + 1);
+            break;
+          case '2-3 months':
+            endDate.setMonth(endDate.getMonth() + 3);
+            break;
+          case '3+ months':
+            endDate.setMonth(endDate.getMonth() + 6);
+            break;
+          default:
+            endDate.setMonth(endDate.getMonth() + 1);
+        }
+
+        // For now, we'll send this as a message with structured project details
+        // In a full implementation, this would create a project first, then a contract
+        const projectMessage = `
+HIRE REQUEST - ${formData.projectTitle}
+
+Project Type: ${projectType}
+Budget: $${formData.budget} ${projectType === 'hourly' ? 'per hour' : 'total'}
+Duration: ${formData.duration}
+Start Date: ${formData.startDate}
+Required Skills: ${formData.skills}
+
+Description:
+${formData.projectDescription}
+
+This is a formal hire request. Please review the details and respond if you're interested in working on this project.
+        `;
+
+        // Upload attachments first if any
+        let attachmentUrls: any[] = [];
+        if (formData.attachments.length > 0) {
+          for (const file of formData.attachments) {
+            const uploadResult = await fileUploadApi.uploadSingle(file, 'projects');
+            attachmentUrls.push({
+              fileName: file.name,
+              fileUrl: uploadResult.data.url,
+              fileType: file.type,
+              fileSize: file.size
+            });
+          }
+        }
+
+        const messageData: SendMessageDto = {
+          receiverId: freelancer.id,
+          content: projectMessage,
+          messageType: 'text',
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : undefined
+        };
+
+        await messageApi.sendMessage(messageData);
+      }
+
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error('Error submitting form:', err);
+      setError(err.message || 'An error occurred while sending your request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -223,6 +331,16 @@ export const HireFreelancerModal: React.FC<HireFreelancerModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <X size={16} className="text-red-600" />
+                  <span className="text-red-800 font-medium">Error</span>
+                </div>
+                <p className="text-red-700 text-sm mt-1">{error}</p>
+              </div>
+            )}
+            
             {contactType === 'message' ? (
               // Message Form
               <>

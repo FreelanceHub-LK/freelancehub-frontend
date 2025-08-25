@@ -42,11 +42,35 @@ export interface UserAnalytics {
   totalEarnings: number;
   averageRating: number;
   responseRate: number;
+  proposalSuccessRate: number;
+  earningsChart: {
+    date: string;
+    amount: number;
+  }[];
+  proposalStats: {
+    totalSubmitted: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+  };
   recentProjects: {
+    _id: string;
     title: string;
     completedAt: Date;
     earnings: number;
     rating?: number;
+    clientName: string;
+  }[];
+  topSkills: {
+    skill: string;
+    projectCount: number;
+    avgRating: number;
+  }[];
+  monthlyStats: {
+    month: string;
+    earnings: number;
+    projects: number;
+    profileViews: number;
   }[];
   earningsHistory: {
     month: string;

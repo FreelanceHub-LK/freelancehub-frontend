@@ -8,6 +8,14 @@ export interface CreateFreelancerRequest {
   isAvailable?: boolean;
   certifications?: string[];
   portfolioLinks?: string[];
+  bio?: string;
+  title?: string;
+  workingHours?: {
+    timezone: string;
+    availability: {
+      [key: string]: { start: string; end: string; available: boolean; };
+    };
+  };
 }
 
 export interface UpdateFreelancerRequest {
@@ -17,6 +25,14 @@ export interface UpdateFreelancerRequest {
   isAvailable?: boolean;
   certifications?: string[];
   portfolioLinks?: string[];
+  bio?: string;
+  title?: string;
+  workingHours?: {
+    timezone: string;
+    availability: {
+      [key: string]: { start: string; end: string; available: boolean; };
+    };
+  };
 }
 
 export interface FreelancerProfile {
@@ -29,6 +45,14 @@ export interface FreelancerProfile {
   certifications: string[];
   portfolioLinks: string[];
   completedProjects: number;
+  bio?: string;
+  title?: string;
+  workingHours?: {
+    timezone: string;
+    availability: {
+      [key: string]: { start: string; end: string; available: boolean; };
+    };
+  };
   createdAt: string;
   updatedAt: string;
   // Populated user data
@@ -40,6 +64,8 @@ export interface FreelancerProfile {
     profilePicture?: string;
     rating: number;
     reviewCount: number;
+    phoneNumber?: string;
+    address?: string;
   };
 }
 
@@ -147,6 +173,58 @@ export const freelancerApi = {
     const response = await apiService.get(`/freelancers?isAvailable=true&limit=${limit}`);
     const responseData = response.data as FreelancerListResponse;
     return responseData?.data || [];
+  },
+
+  // Add skills to profile
+  addSkills: async (skills: string[]): Promise<FreelancerProfile> => {
+    const response = await apiService.post("/freelancers/me/skills", { skills });
+    return response.data as FreelancerProfile;
+  },
+
+  // Remove skill from profile
+  removeSkill: async (skillId: string): Promise<FreelancerProfile> => {
+    const response = await apiService.delete(`/freelancers/me/skills/${skillId}`);
+    return response.data as FreelancerProfile;
+  },
+
+  // Update skills (replace all)
+  updateSkills: async (skills: string[]): Promise<FreelancerProfile> => {
+    const response = await apiService.put("/freelancers/me/skills", { skills });
+    return response.data as FreelancerProfile;
+  },
+
+  // Get freelancer dashboard data
+  getDashboard: async (): Promise<{
+    profile: FreelancerProfile;
+    stats: {
+      activeProjects: number;
+      totalEarnings: number;
+      profileViews: number;
+      averageRating: number;
+      completedProjects: number;
+      pendingProposals: number;
+    };
+    recentActivity: any[];
+  }> => {
+    const response = await apiService.get("/freelancers/dashboard");
+    return response.data as {
+      profile: FreelancerProfile;
+      stats: {
+        activeProjects: number;
+        totalEarnings: number;
+        profileViews: number;
+        averageRating: number;
+        completedProjects: number;
+        pendingProposals: number;
+      };
+      recentActivity: any[];
+    };
+  },
+
+  // Get freelancer analytics
+  getAnalytics: async (period: 'week' | 'month' | 'quarter' | 'year' = 'month') => {
+    const response = await apiService.get(`/analytics/my-analytics?period=${period}`);
+    return response.data;
   },
 };
 

@@ -97,14 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           // Check if freelancer profile exists
           await apiService.get("/freelancers/me");
-          router.push("/dashboard");
+          router.push("/freelancer/dashboard");
         } catch (profileError: any) {
           if (profileError.response?.status === 404) {
             // No freelancer profile found, redirect to setup
             router.push("/freelancer/setup");
           } else {
-            // Other error, go to dashboard anyway
-            router.push("/dashboard");
+            // Other error, go to freelancer dashboard anyway
+            router.push("/freelancer/dashboard");
           }
         }
       } else if (authResponse.role === "client") {
